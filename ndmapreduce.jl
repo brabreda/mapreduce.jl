@@ -1,4 +1,3 @@
-
 # module mapreduce
 using CUDA
 using KernelAbstractions
@@ -12,20 +11,9 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
 # product of the two iterators `Rreduce` and `Rother`, where the latter iterator will have
 # singleton entries for the dimensions that should be reduced (and vice versa).
 @kernel function partial_mapreduce_grid(f, op, neutral, R, As...)
-  # decompose the 1D hardware indices into separate ones for reduction (across threads
-  # and possibly blocks if it doesn't fit) and other elements (remaining blocks)
-  threadIdx_reduce = @index(Local)
-  blockDim_reduce = prod(@groupsize())
-  groups = cld(prod(@ndrange()),prod(@groupsize()))
-  blockIdx_reduce, blockIdx_other = fldmod1(@index(Group), groups)
-  gridDim_reduce = prod(@ndrange()) ÷ blockDim_reduce ÷ groups
-
-  # block-based indexing into the values outside of the reduction dimension
-  # (that means we can safely synchronize threads within this block)
-  Iother = @index(Group, Cartesian)
 
   # load the neutral value
-  Iout = CartesianIndex(Tuple(Iother)..., blockIdx_reduce)
+  Iout = CartesianIndex(Tuple(@index(Group, Cartesian))..., 1)
   neutral = if neutral === nothing
       R[Iout]
   else
@@ -35,17 +23,18 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
   val = op(neutral, neutral)
 
   # reduce serially across chunks of input vector that don't fit in a block
-  ireduce = threadIdx_reduce + (blockIdx_reduce - 1) * blockDim_reduce
+  ireduce = @index(Local, Linear)
   while ireduce <= prod(@groupsize())
-      J = @index(Global,Cartesian)
+      Ireduce = @inbounds KernelAbstractions.workitems( KernelAbstractions.__iterspace(__ctx__))[ireduce]
+      J = max(@index(Group, Cartesian), Ireduce)
       val = op(val, f(_map_getindex(As, J)...))
-      ireduce += blockDim_reduce * gridDim_reduce
+      ireduce += 1024
   end
 
   val = @groupreduce(op, val, neutral)
 
   # write back to memory
-  if threadIdx_reduce == 1
+  if @index(Local, Linear) == 1
     R[Iout] = val
   end 
 end
@@ -91,6 +80,7 @@ function mapreducedim(f::F, op::OP, R,
   workgroupDim = ifelse.(size(A) .== size(R), 1, size(A))
   ndrangeDim = size(A)
 
+
   # allocate an additional, empty dimension to write the reduced value to.
   # this does not affect the actual location in memory of the final values,
   # but allows us to write a generalized kernel supporting partial reductions.
@@ -128,11 +118,11 @@ function mapreducedim(f::F, op::OP, R,
   #   big_mapreduce_kernel(KABackend, 1024)(f, op, init, Rreduce, Rother, R′, A; workgroupsize=1024, ndrange=wanted_groups)
   #   return R
   # end
-
+  @show wanted_groups
   # perform the actual reduction
   if reduce_blocks == 1
       # we can do the entire reduction in one go
-      kernel(ctx, f, op, init, R′, A; threads=workgroupsize, blocks=wanted_groups)
+      kernel(ctx, f, op, init, R′, A; threads=1024, blocks=wanted_groups)
   else
       # we need multiple steps to cover all values to reduce
       partial = similar(R, (size(R)..., ngroups))
@@ -143,7 +133,7 @@ function mapreducedim(f::F, op::OP, R,
       # NOTE: we can't use the previously-compiled kernel, since the type of `partial`
       #       might not match the original output container (e.g. if that was a view).
       println("partial_mapreduce_grid")
-      kernel(ctx, f, op, init, partial, A; threads=workgroupsize, blocks=ngroups)
+      kernel(ctx, f, op, init, partial, A; threads=1024, blocks=ngroups)
 
       mapreducedim(identity, op, R′, partial; init=init)
   end
@@ -165,9 +155,15 @@ end
 using BenchmarkTools
 # end
 
-a = CUDA.randn(10,10,10,10)
-b = similar(a,(10,10))
-mapreduce(x->x, +, a, dims=(3,4)) == mapreducedim(x->x, +, b,a; init=Float32(0.0))
+a = CUDA.randn(35,35,35,35)
+b = similar(a,(35,35,1,1))
+
+c = mapreduce(x->x, +, a, dims=(3,4))
+d = mapreducedim(x->x, +, b,a; init=Float32(0.0))
+
+@show c
+@show d
+
 
 
 
