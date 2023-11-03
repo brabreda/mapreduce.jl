@@ -1,5 +1,3 @@
-module KALaunchConfig
-
 using KernelAbstractions
 
 abstract type launchConfig end
@@ -19,7 +17,6 @@ function getMaxWorkItems(::launchConfig) end
 
 function setWorkItems(::launchConfig, workitems) end
 
-end
 
 
 

@@ -3,7 +3,7 @@ using Random
 using CUDA
 
 include("src/launch.jl")
-include("src/launchconfig.jl")
+include("src/CUDAlaunch.jl")
 include("src/ndmapreduce.jl")
 
 
@@ -23,7 +23,7 @@ d = CUDA.@sync(mapreducedim(x->x*2, +, b,a; init=Int64(0)))
 #display(c)
 #display(d)
 
-#abs.(c - d)
+abs.(c - d)
 
 
   
