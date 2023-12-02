@@ -11,9 +11,9 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
 # product of the two iterators `Rreduce` and `Rother`, where the latter iterator will have
 # singleton entries for the dimensions that should be reduced (and vice versa).
 @kernel function partial_mapreduce_grid(f, op, neutral, strideSize, localReduceIndices, R, As...)
-  ireduce = @index(Local, Linear)
+  global_Idx = @index(Local, Linear) + (@index(Group, Linear) - 1) * prod(@groupsize)
   Iout = @index(Group, Cartesian)
-  #Iother = CartesianIndex(Tuple(Iout)[1:(length(Iout)-1)]..., 1)
+  Iother = CartesianIndex(Tuple(Iout)[1:(length(Iout)-1)]..., 1)
 
   # load the neutral value
   @inbounds neutral = if neutral === nothing
@@ -25,9 +25,10 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
   val = op(neutral, neutral)
 
   # reduce serially across chunks of input vector that don't fit in a block
+  ireduce = mod1( global_Idx, strideSize)
   @inbounds while ireduce <= length(localReduceIndices)
       Ireduce = localReduceIndices[ireduce]
-      J = max(Iout, Ireduce)
+      J = max(Iother, Ireduce)
       val = op(val, f(_map_getindex(As,J)...))
       ireduce += strideSize
   end
@@ -39,7 +40,6 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
     R[Iout] = val
   end 
 end
-
 
 function mapreducedim(f::F, op::OP, R,
                                A::Union{AbstractArray,Broadcast.Broadcasted};
@@ -54,18 +54,18 @@ function mapreducedim(f::F, op::OP, R,
       R = reshape(R, dims)
   end
 
-  ndrange = (size(A)..., 1)
-  groupsize = (ones(Int, ndims(A))..., 1)
+  ndrange = (size(A)..., 1, 1)
+  groupsize = (ones(Int, ndims(A))..., 1, 1)
 
   # Interation domain, the indices of the iteration space are split into two parts. localReduceIndices
   # covers the part of the indices that is identical for every group, the other part deduced form KA.
   # @index(Group, Cartesian) covers the part of the indices that is different for every group.
-  localReduceIndices = CartesianIndices((ifelse.(axes(A) .== axes(R), Ref(Base.OneTo(1)), axes(A))..., Base.OneTo(1)))
+  localReduceIndices = CartesianIndices((ifelse.(axes(A) .== axes(R), Ref(Base.OneTo(1)), axes(A))..., Base.OneTo(1), Base.OneTo(1)))
 
   # allocate an additional, empty dimension to write the reduced value to.
   # this does not affect the actual location in memory of the final values,
   # but allows us to write a generalized kernel supporting partial reductions.
-  R′ = reshape(R, (size(R)..., 1))
+  R′ = reshape(R, (size(R)..., 1, 1))
 
   # we create dummy dimensions for the group and ndrange that allows us the determine a launch 
   # configuration. Making the dimensions one size bigger allows us to create the ideal groupsize
@@ -84,19 +84,21 @@ function mapreducedim(f::F, op::OP, R,
 
   strideSize = max_groupsize
   oneStepReduce = true
+  RotherSize = prod(size(R))
 
   
-  # if prod(size(R)) == 1
-  #   launch_ndrange = ifelse(prod(size(A)) > max_ndrange, max_ndrange, prod(size(A)))
+  if prod(size(R)) == 1
+    launch_ndrange = ifelse(prod(size(A)) > max_ndrange, max_ndrange, prod(size(A)))
     
-  #   ndrange = (ones(Int, length(ndrange)-2)..., max_groupsize, cld(launch_ndrange, max_groupsize))  
-  #   groupsize = (ones(Int, length(groupsize)-2)...,  max_groupsize, 1) 
-  #   oneStepReduce = max_groupsize >= prod(ndrange)
-  #   strideSize = prod(ndrange)
-  # else
-  ndrange = (ifelse.(size(A) .== size(R), size(A), 1)..., max_groupsize)
-  groupsize = (ones(Int, length(groupsize)-1)..., max_groupsize)
-  # end
+    ndrange = (ones(Int, length(ndrange)-2)..., max_groupsize, cld(launch_ndrange, max_groupsize))  
+    groupsize = (ones(Int, length(groupsize)-2)...,  max_groupsize, 1) 
+    oneStepReduce = max_groupsize >= prod(ndrange)
+    strideSize = prod(ndrange)
+  else
+    ndrange = (ifelse.(size(A) .== size(R), size(A), 1)..., max_groupsize, 1)
+    groupsize = (ones(Int, length(groupsize)-2)..., max_groupsize, 1)
+    RotherSize = 1
+  end
 
   # If we have only one group per slice, every slice can be reduced in one go, no second kernel is needed.
   if oneStepReduce
@@ -104,7 +106,7 @@ function mapreducedim(f::F, op::OP, R,
   else
       # we need temporary storage to hold partial reductions for every slice the endresult can be calcultated
       # by reducing the temporary storage in the direction of the every slice.
-      partial = similar(R, (size(R)..., cld(prod(ndrange), prod(groupsize))))
+      partial = similar(R, (size(R)..., 1, cld(prod(ndrange), prod(groupsize))))
       if init === nothing
           # without an explicit initializer we need to copy from the output container
           partial .= R
@@ -113,7 +115,7 @@ function mapreducedim(f::F, op::OP, R,
       # NOTE: we can't use the previously-compiled kernel, since the type of `partial`
       #       might not match the original output container (e.g. if that was a view).
       partial_mapreduce_grid(KABackend, groupsize)(f, op, init, strideSize, localReduceIndices, partial, A, ndrange=ndrange)
-      #display(partial)
+      display(partial)
       mapreducedim(identity, op, R′, partial; init=init)
   end
 
