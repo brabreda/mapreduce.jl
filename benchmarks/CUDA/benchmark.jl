@@ -6,35 +6,53 @@ using DataFrames
 using CSV
 
 include("../benchmarks_to_df.jl")
+include("../../src/ndmapreduce.jl")
+include("../../src/launch.jl")
+include("../../src/CUDAlaunch.jl")
+
 
 const file = "CUDA_scalar.csv"
+const KAfile = "KA_scalar.csv"
+const KA = false
 
-function benchmark_CUDA_scalar(inputType, op, init; write_header=false)
+function benchmark_CUDA_scalar(inputType, op, init; write_header=false, warmup=false)
+  CUDA.memory_status() 
+
   println(inputType)
   n =128
-  while n < 2000000
+  while n < 8000000
       results = []
       N = []
       types = []
       operators = []
 
       println("\t", n)
-      data=CUDA.zeros(inputType, n)
-      final=CUDA.ones(inputType, 1)
   
       # this will take longer as every iteration the function will be parsed
-      for idk in 1:3
-        println(idk)
-        bench = @benchmarkable CUDA.@sync(GPUArrays.mapreducedim!(x->x, $op, $final, $data; init=$init)) evals=10 samples=10000 seconds = 10000
-
-        result = run(bench)
-        #isplay(result)
-
-        push!(results, result)
-        push!(N, n)
-        push!(types, inputType)
-        push!(operators, op)
+      if KA
+        bench = @benchmarkable CUDA.@sync(mapreducedim(x->x, $op, final, data; init=$init)) evals=10 samples=500 seconds = 10000 setup= (begin 
+            data=CUDA.rand($inputType, $n)
+            final=CUDA.ones($inputType, 1) 
+          end) teardown = (begin 
+            CUDA.unsafe_free!(data) 
+            CUDA.unsafe_free!(final) 
+          end)
+      else
+        bench = @benchmarkable CUDA.@sync(GPUArrays.mapreducedim!(x->x, $op, final, data; init=$init)) evals=10 samples=500 seconds = 10000 setup= (begin 
+            data=CUDA.rand($inputType, $n)
+            final=CUDA.ones($inputType, 1) 
+          end) teardown = (begin 
+            CUDA.unsafe_free!(data) 
+            CUDA.unsafe_free!(final) 
+          end)
       end
+
+      result = run(bench)
+
+      push!(results, result)
+      push!(N, n)
+      push!(types, inputType)
+      push!(operators, op)
 
       n = n * 2
 
@@ -45,25 +63,34 @@ function benchmark_CUDA_scalar(inputType, op, init; write_header=false)
           df.op .= b
           df
       end
-      
-      CSV.write(file, df_benchmark;append=true, writeheader=write_header)
-      write_header = false
+      if !warmup
+    
+        if KA
+          CSV.write(KAfile, df_benchmark;append=true, writeheader=write_header)
+        else
+          CSV.write(file, df_benchmark;append=true, writeheader=write_header)
+        end
+        write_header = false
+      end
   end 
 
-
+  CUDA.memory_status() 
   #return df_benchmark
 end
 
 function benchmark_CUDA_scalar()
 
+  write(KA ? KAfile : file, "times,gctimes,memory,allocs,N,type,op\n");
+  for idk in 1:5
+  println("\t\t", idk)
   # ########################################
   # Sum
   # ########################################
-  benchmark_CUDA_scalar(UInt8, +, UInt8(0); write_header=true)
-  benchmark_CUDA_scalar(UInt16, +, UInt16(0))
+  #benchmark_CUDA_scalar(UInt8, +, UInt8(0); write_header=true)
+  #benchmark_CUDA_scalar(UInt16, +, UInt16(0))
   benchmark_CUDA_scalar(UInt32, +, UInt32(0))
   benchmark_CUDA_scalar(UInt64, +, UInt64(0))
-  benchmark_CUDA_scalar(UInt128, +, UInt128(0))
+  #benchmark_CUDA_scalar(UInt128, +, UInt128(0))
 
   # benchmark_CUDA_scalar(Int8, +, Int8(0))
   # benchmark_CUDA_scalar(Int16, +, Int16(0))
@@ -130,6 +157,8 @@ function benchmark_CUDA_scalar()
 
   # benchmark_CUDA_scalar(Float16, *, Float16(1))
   # benchmark_CUDA_scalar(Float32, *, Float32(1))
+
+  end
 end
 
 benchmark_CUDA_scalar()
