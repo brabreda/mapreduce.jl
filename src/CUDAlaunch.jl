@@ -1,6 +1,5 @@
 # launch configuration
 function launch_config(kernelObj, args...; workgroupsize, ndrange)
-  dev = device()
   backend = KernelAbstractions.backend(kernelObj)
   ndrange, workgroupsize, iterspace, dynamic = KernelAbstractions.launch_config(kernelObj, ndrange ,workgroupsize)
   ctx = KernelAbstractions.mkcontext(kernelObj, ndrange, iterspace)
@@ -12,7 +11,7 @@ function launch_config(kernelObj, args...; workgroupsize, ndrange)
   groupsize = if prod(workgroupsize) <= maxthreads
     maxthreads
   else 
-    CUDA.nextwarp(dev, cld(prod(workgroupsize), cld(prod(workgroupsize), maxthreads)))
+    cld(prod(workgroupsize), cld(prod(workgroupsize), maxthreads))
   end
 
   ndrangesize = groupsize * maxblocks
