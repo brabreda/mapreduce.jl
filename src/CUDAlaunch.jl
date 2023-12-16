@@ -17,5 +17,5 @@ function launch_config(kernelObj, args...; workgroupsize, ndrange)
 
   ndrangesize = groupsize * maxblocks
 
-  return groupsize, ndrangesize
+  return groupsize, ndrangesize, kernel, ctx
 end

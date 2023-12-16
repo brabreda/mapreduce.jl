@@ -12,7 +12,7 @@ include("../../src/CUDAlaunch.jl")
 
 const file = "CUDA_ND_elements_per_group.csv"
 const KAfile = "KA_ND_elements_per_group.csv"
-const KA = false
+const KA = true
 
 
 function benchmark_CUDA_ND_elements_per_group(inputType, op, init; write_header=false)

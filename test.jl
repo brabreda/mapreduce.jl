@@ -45,9 +45,12 @@ b = CUDA.rand(Int32, (1,32))
 # println("=================================================== \n")
 # println("KernelAbstractions To N\n")
 # println("=================================================== \n")
+Profile.init(0x0000000000989680, 0.0001)
 
 @device_code_warntype CUDA.@sync(mapreducedim(x->x, +,b, a; init=Int32(0)))
 @btime CUDA.@sync(mapreducedim(x->x, +,$b, $a; init=Int32(0)))
+
+#@profilehtml CUDA.@sync(mapreducedim(x->x, +,b, a; init=Int32(0)))
 #
 
 # display(c)

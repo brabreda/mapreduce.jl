@@ -91,7 +91,7 @@ NVTX.@annotate function mapreducedim(f::F, op::OP, R,
     ndrange = 1
     args = (f, op, init, R, A)
     kernelObj = scalar_mapreduce_grid(KABackend)
-    max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
+    max_groupsize, max_ndrange, kernel = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
     groupsize = max_groupsize
     ndrange = min(length(A), max_ndrange)
@@ -113,13 +113,12 @@ NVTX.@annotate function mapreducedim(f::F, op::OP, R,
 
     localReduceIndices = CartesianIndices((ifelse.(axes(A) .== axes(R), Ref(Base.OneTo(1)), axes(A))..., Base.OneTo(1)))
 
-    ndrange =  (ifelse.(size(A) .== size(R), size(A), 1)..., length(localReduceIndices))
-    groupsize =  (ones(Int64, ndims(A))..., length(localReduceIndices))
+    ndrange = (ifelse.(size(A) .== size(R), size(A), 1)..., length(localReduceIndices))
+    groupsize = (ones(Int, ndims(A))..., length(localReduceIndices))
 
     # Interation domain, the indices of the iteration space are split into two parts. localReduceIndices
     # covers the part of the indices that is identical for every group, the other part deduced form KA.
     # @index(Group, Cartesian) covers the part of the indices that is different for every group.
-    localReduceIndices = CartesianIndices((ifelse.(axes(A) .== axes(R), Ref(Base.OneTo(1)), axes(A))..., Base.OneTo(1)))
 
     # allocate an additional, empty dimension to write the reduced value to.
     # this does not affect the actual location in memory of the final values,
@@ -131,7 +130,7 @@ NVTX.@annotate function mapreducedim(f::F, op::OP, R,
 
     args = (f, op, init, localReduceIndices, R, A)
     kernelObj = nd_mapreduce_grid(KABackend)
-    max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
+    max_groupsize, max_ndrange, kernel, ctx = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
     # Instead of using KA's indices, we use extern CartesianIndices. This allows use more indices per 
     # group than allowed by hardware + we can add the dimensions of the group to the end and use Linear
@@ -140,7 +139,8 @@ NVTX.@annotate function mapreducedim(f::F, op::OP, R,
     ndrange = (ifelse.(size(A) .== size(R), size(A), 1)..., max_groupsize)
     groupsize = (ones(Int, length(groupsize)-1)..., max_groupsize)
 
-    nd_mapreduce_grid(KABackend)( f, op, init, localReduceIndices, R, A, workgroupsize=groupsize, ndrange=ndrange)
+    kernel(ctx, f, op, init, localReduceIndices, R, A, threads=max_groupsize, blocks=(max_ndrange÷max_groupsize))
+
   end
   return R
 end
