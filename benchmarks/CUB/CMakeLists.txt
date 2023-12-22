@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(CUB_REDUCTION_BENCHMARK)
 
-set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-12.2/")
+set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-12.3/")
 
 find_package(CUDA REQUIRED)
 
