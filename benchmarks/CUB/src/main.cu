@@ -33,7 +33,7 @@ static void writeCSVHeader(string fileName){
 
 int main()
 { 
-    string fileName = "output.csv";
+    string fileName = "../CUDA/CUB.csv";
     writeCSVHeader(fileName);
 
     default_random_engine generator;

@@ -1,1 +1,5 @@
 build/
+src/CMakeFiles/
+src/CUB_Benchmark
+src/CMakeCache.txt
+src/cmake_install.cmake
