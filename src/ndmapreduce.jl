@@ -29,14 +29,14 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
   @inbounds while ireduce <= length(localReduceIndices)
       Ireduce = localReduceIndices[ireduce]
       J = max(Iout, Ireduce)
-      @inbounds val = op(val, f(As[J]))
+      val = op(val, f(As[J]))
       ireduce += prod(@groupsize)
   end
 
   val = @groupreduce(op, val, neutral)
 
   # write back to memory
-  if @index(Local, Linear) == 1
+  @inbounds if @index(Local, Linear) == 1
     R[Iout] = val
   end 
 end
@@ -73,7 +73,7 @@ end
 end
 
 
-NVTX.@annotate function mapreducedim(f::F, op::OP, R,
+function mapreducedim(f::F, op::OP, R,
                                A::Union{AbstractArray,Broadcast.Broadcasted};
                                init=nothing) where {F, OP}
   Base.check_reducedims(R, A)
@@ -86,18 +86,21 @@ NVTX.@annotate function mapreducedim(f::F, op::OP, R,
       R = reshape(R, dims)
   end
 
+  R′ = reshape(R, (size(R)..., 1))
+
   if length(R) == 1
     groupsize = 1 
     ndrange = 1
-    args = (f, op, init, R, A)
+
+    args = (f, op, init, R′, A)
     kernelObj = scalar_mapreduce_grid(KABackend)
-    max_groupsize, max_ndrange, kernel = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
+    max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
     groupsize = max_groupsize
     ndrange = min(length(A), max_ndrange)
 
     if length(A) <= max_groupsize
-      scalar_mapreduce_grid(KABackend)( f, op, init, R, A, ndrange=groupsize, workgroupsize=groupsize)
+      scalar_mapreduce_grid(KABackend)( f, op, init, R′, A, ndrange=groupsize, workgroupsize=groupsize)
     else
       partial = similar(R, (size(R)..., cld(ndrange, groupsize)))
       if init === nothing
@@ -107,7 +110,7 @@ NVTX.@annotate function mapreducedim(f::F, op::OP, R,
       
       scalar_mapreduce_grid(KABackend)( f, op, init, partial, A, ndrange=ndrange, workgroupsize=groupsize)
 
-      mapreducedim(identity, op, R, partial; init=init)
+      mapreducedim(identity, op, R', partial; init=init)
     end
   else 
 
@@ -128,9 +131,9 @@ NVTX.@annotate function mapreducedim(f::F, op::OP, R,
     # configuration. Making the dimensions one size bigger allows us to create the ideal groupsize
     # in this dimension.
 
-    args = (f, op, init, localReduceIndices, R, A)
+    args = (f, op, init, localReduceIndices, R′, A)
     kernelObj = nd_mapreduce_grid(KABackend)
-    max_groupsize, max_ndrange, kernel, ctx = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
+    max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
     # Instead of using KA's indices, we use extern CartesianIndices. This allows use more indices per 
     # group than allowed by hardware + we can add the dimensions of the group to the end and use Linear
@@ -139,8 +142,27 @@ NVTX.@annotate function mapreducedim(f::F, op::OP, R,
     ndrange = (ifelse.(size(A) .== size(R), size(A), 1)..., max_groupsize)
     groupsize = (ones(Int, length(groupsize)-1)..., max_groupsize)
 
-    kernel(ctx, f, op, init, localReduceIndices, R, A, threads=max_groupsize, blocks=(max_ndrange÷max_groupsize))
+    groups = if prod(ndrange) * cld(length(localReduceIndices), max_groupsize) <=  max_ndrange 
+      cld(length(localReduceIndices), max_groupsize)
+    else 
+      1
+    end
 
+    ndrange = (ifelse.(axes(A) .== axes(R), size(A), 1)..., max_groupsize*groups)
+
+    if groups == 1
+      nd_mapreduce_grid(KABackend)(f, op, init, localReduceIndices, R′, A, ndrange=ndrange, workgroupsize=groupsize)
+    else
+      partial = similar(R, (size(R)..., groups))
+      if init === nothing
+          # without an explicit initializer we need to copy from the output container
+          partial .= R
+      end
+
+      nd_mapreduce_grid(KABackend)(f, op, init, localReduceIndices, partial, A, ndrange=ndrange, workgroupsize=groupsize)
+
+      mapreducedim(identity, op, R′, partial; init=init)
+    end
   end
   return R
 end

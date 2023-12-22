@@ -12,7 +12,7 @@ include("../../src/CUDAlaunch.jl")
 
 
 const file = "CUDA_scalar.csv"
-const KAfile = "KA_scalar.csv"
+const KAfile = "KA_scalar_v2.csv"
 const KA = false
 
 function benchmark_CUDA_scalar(inputType, op, init; write_header=false, warmup=false)
@@ -81,82 +81,82 @@ end
 function benchmark_CUDA_scalar()
 
   write(KA ? KAfile : file, "times,gctimes,memory,allocs,N,type,op\n");
-  for idk in 1:5
+  for idk in 1:7
   println("\t\t", idk)
   # ########################################
   # Sum
   # ########################################
-  #benchmark_CUDA_scalar(UInt8, +, UInt8(0); write_header=true)
-  #benchmark_CUDA_scalar(UInt16, +, UInt16(0))
+  benchmark_CUDA_scalar(UInt8, +, UInt8(0))
+  benchmark_CUDA_scalar(UInt16, +, UInt16(0))
   benchmark_CUDA_scalar(UInt32, +, UInt32(0))
   benchmark_CUDA_scalar(UInt64, +, UInt64(0))
-  #benchmark_CUDA_scalar(UInt128, +, UInt128(0))
+  benchmark_CUDA_scalar(UInt128, +, UInt128(0))
 
-  # benchmark_CUDA_scalar(Int8, +, Int8(0))
-  # benchmark_CUDA_scalar(Int16, +, Int16(0))
-  # benchmark_CUDA_scalar(Int32, +, Int32(0))
-  # benchmark_CUDA_scalar(Int64, +, Int64(0))
-  # benchmark_CUDA_scalar(Int128, +, Int128(0))
+  benchmark_CUDA_scalar(Int8, +, Int8(0))
+  benchmark_CUDA_scalar(Int16, +, Int16(0))
+  benchmark_CUDA_scalar(Int32, +, Int32(0))
+  benchmark_CUDA_scalar(Int64, +, Int64(0))
+  benchmark_CUDA_scalar(Int128, +, Int128(0))
 
-  # benchmark_CUDA_scalar(Float16, +, Float16(0))
-  # benchmark_CUDA_scalar(Float32, +, Float32(0))
+  benchmark_CUDA_scalar(Float16, +, Float16(0))
+  benchmark_CUDA_scalar(Float32, +, Float32(0))
 
 
   # ########################################
   # Min
   # ########################################  
-  # benchmark_CUDA_scalar(UInt8, min, typemax(UInt8))
-  # benchmark_CUDA_scalar(UInt16, min, typemax(UInt16))
-  # benchmark_CUDA_scalar(UInt32, min, typemax(UInt32))
-  # benchmark_CUDA_scalar(UInt64, min, typemax(UInt64))
-  # benchmark_CUDA_scalar(UInt128, min, typemax(UInt128))
+  benchmark_CUDA_scalar(UInt8, min, typemax(UInt8))
+  benchmark_CUDA_scalar(UInt16, min, typemax(UInt16))
+  benchmark_CUDA_scalar(UInt32, min, typemax(UInt32))
+  benchmark_CUDA_scalar(UInt64, min, typemax(UInt64))
+  benchmark_CUDA_scalar(UInt128, min, typemax(UInt128))
 
-  # benchmark_CUDA_scalar(Int8, min, typemax(Int8))
-  # benchmark_CUDA_scalar(Int16, min, typemax(Int16))
-  # benchmark_CUDA_scalar(Int32, min, typemax(Int32))
-  # benchmark_CUDA_scalar(Int64, min, typemax(Int64))
-  # benchmark_CUDA_scalar(Int128, min, typemax(Int128))
+  benchmark_CUDA_scalar(Int8, min, typemax(Int8))
+  benchmark_CUDA_scalar(Int16, min, typemax(Int16))
+  benchmark_CUDA_scalar(Int32, min, typemax(Int32))
+  benchmark_CUDA_scalar(Int64, min, typemax(Int64))
+  benchmark_CUDA_scalar(Int128, min, typemax(Int128))
 
-  # benchmark_CUDA_scalar(Float16, min, typemax(Float16))
-  # benchmark_CUDA_scalar(Float32, min, typemax(Float32))
+  benchmark_CUDA_scalar(Float16, min, typemax(Float16))
+  benchmark_CUDA_scalar(Float32, min, typemax(Float32))
 
 
   # ########################################
   # Min
   # ######################################## 
-  # benchmark_CUDA_scalar(UInt8, max, typemin(UInt8))
-  # benchmark_CUDA_scalar(UInt16, max, typemin(UInt16))
-  # benchmark_CUDA_scalar(UInt32, max, typemin(UInt32))
-  # benchmark_CUDA_scalar(UInt64, max, typemin(UInt64))
-  # benchmark_CUDA_scalar(UInt128, max, typemin(UInt128))
+  benchmark_CUDA_scalar(UInt8, max, typemin(UInt8))
+  benchmark_CUDA_scalar(UInt16, max, typemin(UInt16))
+  benchmark_CUDA_scalar(UInt32, max, typemin(UInt32))
+  benchmark_CUDA_scalar(UInt64, max, typemin(UInt64))
+  benchmark_CUDA_scalar(UInt128, max, typemin(UInt128))
 
-  # benchmark_CUDA_scalar(Int8, max, typemin(Int8))
-  # benchmark_CUDA_scalar(Int16, max, typemin(Int16))
-  # benchmark_CUDA_scalar(Int32, max, typemin(Int32))
-  # benchmark_CUDA_scalar(Int64, max, typemin(Int64))
-  # benchmark_CUDA_scalar(Int128, max, typemin(Int128))
+  benchmark_CUDA_scalar(Int8, max, typemin(Int8))
+  benchmark_CUDA_scalar(Int16, max, typemin(Int16))
+  benchmark_CUDA_scalar(Int32, max, typemin(Int32))
+  benchmark_CUDA_scalar(Int64, max, typemin(Int64))
+  benchmark_CUDA_scalar(Int128, max, typemin(Int128))
 
-  # benchmark_CUDA_scalar(Float16, max, typemin(Float16))
-  # benchmark_CUDA_scalar(Float32, max, typemin(Float32))
+  benchmark_CUDA_scalar(Float16, max, typemin(Float16))
+  benchmark_CUDA_scalar(Float32, max, typemin(Float32))
 
 
   # ########################################
   # Product
   # ######################################## 
-  # benchmark_CUDA_scalar(UInt8, *, UInt8(1))
-  # benchmark_CUDA_scalar(UInt16, *, UInt16(1))
-  # benchmark_CUDA_scalar(UInt32, *, UInt32(1))
-  # benchmark_CUDA_scalar(UInt64, *, UInt64(1))
-  # benchmark_CUDA_scalar(UInt128, *, UInt128(1))
+  benchmark_CUDA_scalar(UInt8, *, UInt8(1))
+  benchmark_CUDA_scalar(UInt16, *, UInt16(1))
+  benchmark_CUDA_scalar(UInt32, *, UInt32(1))
+  benchmark_CUDA_scalar(UInt64, *, UInt64(1))
+  benchmark_CUDA_scalar(UInt128, *, UInt128(1))
 
-  # benchmark_CUDA_scalar(Int8, *, Int8(1))
-  # benchmark_CUDA_scalar(Int16, *, Int16(1))
-  # benchmark_CUDA_scalar(Int32, *, Int32(1))
-  # benchmark_CUDA_scalar(Int64, *, Int64(1))
-  # benchmark_CUDA_scalar(Int128, *, Int128(1))
+  benchmark_CUDA_scalar(Int8, *, Int8(1))
+  benchmark_CUDA_scalar(Int16, *, Int16(1))
+  benchmark_CUDA_scalar(Int32, *, Int32(1))
+  benchmark_CUDA_scalar(Int64, *, Int64(1))
+  benchmark_CUDA_scalar(Int128, *, Int128(1))
 
-  # benchmark_CUDA_scalar(Float16, *, Float16(1))
-  # benchmark_CUDA_scalar(Float32, *, Float32(1))
+  benchmark_CUDA_scalar(Float16, *, Float16(1))
+  benchmark_CUDA_scalar(Float32, *, Float32(1))
 
   end
 end

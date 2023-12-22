@@ -45,10 +45,28 @@ b = CUDA.rand(Int32, (1,32))
 # println("=================================================== \n")
 # println("KernelAbstractions To N\n")
 # println("=================================================== \n")
-Profile.init(0x0000000000989680, 0.0001)
+#Profile.init(0x0000000000989680, 0.0001)
 
-@device_code_warntype CUDA.@sync(mapreducedim(x->x, +,b, a; init=Int32(0)))
-@btime CUDA.@sync(mapreducedim(x->x, +,$b, $a; init=Int32(0)))
+x = @btime CUDA.@sync(mapreduce(x->x, +, a,dims=(1); init=Int32(0)))
+y = @btime CUDA.@sync(mapreducedim(x->x, +,b, a; init=Int32(0)))
+
+display(x)
+display(y)
+
+
+a = CUDA.rand(Int32, (1024,100))
+b = CUDA.rand(Int32, (1, 100))
+
+# println("=================================================== \n")
+# println("KernelAbstractions To N\n")
+# println("=================================================== \n")
+#Profile.init(0x0000000000989680, 0.0001)
+
+# x = @btime CUDA.@sync(mapreducedim(x->x, +,b, a; init=Int32(0)))
+# y = @btime CUDA.@sync(mapreduce(x->x, +, a,dims=(1); init=Int32(0)))
+
+#display(x)
+#display(y)
 
 #@profilehtml CUDA.@sync(mapreducedim(x->x, +,b, a; init=Int32(0)))
 #
