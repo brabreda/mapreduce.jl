@@ -82,8 +82,9 @@ function mapreducedim(f::F, op::OP, R,
   ndrange = (ifelse.(axes(A) .== axes(R), size(A), 1)..., max_groupsize, 1)
   groupsize = (ones(Int, ndims(A))..., max_groupsize, 1)
 
-  groups = if prod(ndrange) * cld(length(localReduceIndices), max_groupsize) <=  max_ndrange 
-    cld(length(localReduceIndices), max_groupsize)
+  groups = if prod(ndrange) <=  max_ndrange 
+    min(fld((max_ndrange ÷ max_groupsize), prod(ndrange) ÷ prod(groupsize)),  # are there groups left?
+        cld(length(localReduceIndices), max_groupsize))                  # how many groups do we want?
   else 
     1
   end
@@ -102,7 +103,7 @@ function mapreducedim(f::F, op::OP, R,
           # without an explicit initializer we need to copy from the output container
           partial .= R
       end
-
+  
       # NOTE: we can't use the previously-compiled kernel, since the type of `partial`
       #       might not match the original output container (e.g. if that was a view).
       partial_mapreduce_grid(KABackend)(f, op, init, stridesize, localReduceIndices, partial, A, workgroupsize=groupsize, ndrange=ndrange)
@@ -111,15 +112,3 @@ function mapreducedim(f::F, op::OP, R,
 
   return R
 end
-
-  # # Every slices is reduced by one group, if there are groups leftover a slice can be reduced by multiple groups. 
-  # # The result can then be combined with in a second kernellaunch 
-  # slice_groups = prod(size(R))
-  # groups_per_slice = if launch_groupsize <= prod(groupsize)
-  #     1                                        # We don't need multiple groups to cover 1 slice.
-  # else
-  #     min(cld(length(localReduceIndices), launch_groupsize), # it can be optimal to use multiple groups for one slice
-  #         cld(launch_ndrange, prod(groupsize)))                # but we should not use more groups than we have.
-  # end  
-
-  # total_groups = slice_groups * slice_groups

@@ -4,7 +4,6 @@ using Plots
 using StatsPlots
 using Plots.PlotMeasures
 
-
 path = dirname(@__FILE__)
 const CUDA_file = path*"/../benchmarks/CUDA/CUDA_scalar.csv"
 const KA_V1_file = path*"/../benchmarks/CUDA/KA_scalar_v1.csv"
@@ -62,6 +61,9 @@ merged_df[!, :op] = replace.(merged_df[!, :op], "+" => "sum")
 
 merged_df[!, :op] = replace.(merged_df[!, :op], "*" => "prod")
 
+# filter N below 500000 to get figure ...
+# merged_df = filter(row -> row[:N] <= 500000, merged_df)
+
 #get unique types
 types = unique(merged_df[!, :type])
 #get unique operations
@@ -71,7 +73,7 @@ ops = unique(merged_df[!, :op])
 for type in types
     for op in ops
         #filter the dataframe for the current type and operation
-        plot(xaxis=:log2, title="Minimum execution time scalar "*op*" reduction "*type, xlabel="N", ylabel="Time (μs)", legend=:topleft, size=(800, 600), link=:both, left_margin = [20mm 0mm], bottom_margin = [20mm 0mm])
+        plot(xaxis=:log2, title="Minimum execution time scalar "*op*" reduction "*type, xlabel="N", ylabel="Time (μs)", legend=:topleft, size=(800, 600), link=:both, left_margin = [10mm 0mm], bottom_margin = [10mm 0mm], right_margin = [10mm 0mm])
 
         filtered_df = filter(row -> row[:type] == type && row[:op] == op, merged_df)
         grouped_df = groupby(filtered_df, [:name, :impl, :type, :op])

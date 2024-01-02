@@ -13,7 +13,7 @@ include("../../src/CUDAlaunch.jl")
 
 const file = "CUDA_scalar.csv"
 const KAfile = "KA_scalar_v1.csv"
-const KA = false
+const KA = true
 
 function benchmark_CUDA_scalar(inputType, op, init; write_header=false, warmup=false)
   CUDA.memory_status() 
