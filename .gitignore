@@ -1,4 +1,7 @@
 *.csv
 **/*.csv
 **/**/*.csv
+*.png
+**/*.png
+**/**/*.png
 test.jl

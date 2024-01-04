@@ -10,10 +10,11 @@ include("../../src/ndmapreduce.jl")
 include("../../src/launch.jl")
 include("../../src/CUDAlaunch.jl")
 
+path = dirname(@__FILE__)
 
-const file = "CUDA_scalar.csv"
-const KAfile = "KA_scalar_v2.csv"
-const KA = false
+const file = path*"/CUDA_scalar.csv"
+const KAfile = path*"/KA_scalar_v2.csv"
+const KA = true
 
 function benchmark_CUDA_scalar(inputType, op, init; write_header=false, warmup=false)
   CUDA.memory_status() 

@@ -75,7 +75,7 @@ end
 
 function mapreducedim(f::F, op::OP, R,
                                A::Union{AbstractArray,Broadcast.Broadcasted};
-                               init=nothing) where {F, OP}
+                               init=nothing) where {F, OP}  
   Base.check_reducedims(R, A)
   length(A) == 0 && return R # isempty(::Broadcasted) iterates
   KABackend = get_backend(A) 
@@ -109,7 +109,7 @@ function mapreducedim(f::F, op::OP, R,
       end
       
       scalar_mapreduce_grid(KABackend)( f, op, init, partial, A, ndrange=ndrange, workgroupsize=groupsize)
-
+  
       mapreducedim(identity, op, R', partial; init=init)
     end
   else 
@@ -142,8 +142,9 @@ function mapreducedim(f::F, op::OP, R,
     ndrange = (ifelse.(size(A) .== size(R), size(A), 1)..., max_groupsize)
     groupsize = (ones(Int, length(groupsize)-1)..., max_groupsize)
 
-    groups = if prod(ndrange) * cld(length(localReduceIndices), max_groupsize) <=  max_ndrange 
-      cld(length(localReduceIndices), max_groupsize)
+    groups = if prod(ndrange) <=  max_ndrange 
+      min(fld((max_ndrange ÷ max_groupsize), prod(ndrange) ÷ prod(groupsize)),  # are there groups left?
+          cld(length(localReduceIndices), max_groupsize))                  # how many groups do we want?
     else 
       1
     end
