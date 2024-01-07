@@ -3,11 +3,11 @@ using DataFrames
 using Plots
 using StatsPlots
 
-const CUDA_file = "../benchmarks/CUDA/CUDA_ND_elements_per_group.csv"
-const KA_V2_file = "../benchmarks/CUDA/KA_ND_elements_per_group.csv"
+path = dirname(@__FILE__)
+const CUDA_file = path*"/../benchmarks/CUDA/CUDA_ND_elements_per_group.csv"
+const KA_V2_file = path*"/../benchmarks/CUDA/KA_ND_elements_per_group_v2.csv"
 
 CUDA_scalar = DataFrame(CSV.File(CUDA_file))
-#KA_V1_scalar = DataFrame(CSV.File(KA_V1_file))
 KA_V2_scalar = DataFrame(CSV.File(KA_V2_file))
 
 min_times_CUDA = combine(groupby(CUDA_scalar, [:N, :type]), "times" => minimum => :min_time)
@@ -35,7 +35,7 @@ for group in grouped_df
     plot!(group.N, group.min_time, label="$name", marker=:auto, color= (impl == "CUDA.jl" ? :red : :blue))
 end
 
-savefig("img/CUDA_ND_elements_per_group.png")
+savefig(path*"/img/CUDA_ND_elements_per_group.png")
 
 
 

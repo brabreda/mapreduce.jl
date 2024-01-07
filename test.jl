@@ -1,96 +1,149 @@
 using BenchmarkTools
 using Random
 using CUDA
-using GPUArrays
 using Profile
 using PProf
-using StatProfilerHTML
+using GPUArrays
+using NVTX
 
 include("src/launch.jl")
 include("src/CUDAlaunch.jl")
 include("src/ndmapreduce.jl")
 
-N = 2^10
 
-# a1 = CUDA.rand(Float32,1000000)
-# a = CUDA.ceil.(UInt32, a1 * 5)
-# b = CUDA.zeros(UInt32,1)
+# N = 2^8
+
+# @show N
+
+# a = CUDA.rand(UInt64, (N))
+# b = CUDA.rand(UInt64, (1))
+
+# # CUDA.@sync(mapreduce(x->x, +, a; init=UInt64(0)))
+# # Profile.init(0x0000000059989680, 0.0000001)
+# # Profile.clear()
+
+# bench = @benchmarkable CUDA.@sync(mapreducedim(x->x, +, final, data; init=UInt64(0))) evals=10 samples=500 seconds = 10000 setup= (begin 
+#             data=CUDA.rand(UInt64, ($N))
+#             final=CUDA.ones(UInt64, (1)) 
+#           end)
+# run(bench)
+
+# bench =  @benchmarkable CUDA.@sync(GPUArrays.mapreducedim!(x->x, +, final, data; init=UInt64(0))) evals=10 samples=500 seconds = 10000 setup= (begin 
+#           data=CUDA.rand(UInt64, ($N))
+#           final=CUDA.ones(UInt64, (1)) 
+#         end)
+# run(bench)
+
+N = 2^15
+
+
+data=CUDA.rand(UInt64, (N,32))
+final=CUDA.ones(UInt64, (1,32)) 
+
+ CUDA.@sync(mapreducedim(x->x, +, final, data; init=UInt64(0)))
+
+# NVTX.enable_gc_hooks()
+
+# bench = @benchmarkable begin NVTX.@range "mapreduce KA" begin CUDA.@sync(mapreducedim(x->x, +, final, data; init=UInt64(0))) end end evals=10 samples=500 seconds = 10000 setup= (begin 
+#             data=CUDA.rand(UInt64, ($N))
+#             final=CUDA.ones(UInt64, (1)) 
+#           end)
+# result = run(bench)
+# display(result)
+
+# bench = @benchmarkable begin NVTX.@range "mapreduce" begin  CUDA.@sync(GPUArrays.mapreducedim!(x->x, +, final, data; init=UInt64(0))) end end evals=10 samples=500 seconds = 10000 setup= (begin 
+#           data=CUDA.rand(UInt64, ($N))
+#           final=CUDA.ones(UInt64, (1)) 
+#         end)
+# result = run(bench)
+# display(result)
+
+
+# Profile.init(0x0000000059989680, 0.0000001)
+# Profile.clear()
+
+
+
+
+
+
+
+
+
+#Profile.clear()
+#@profile CUDA.@sync(mapreducedim(x->x, +, b,a; init=UInt64(0)))
+
+#ProfileSVG.save(joinpath("prof",("$N.svg")),timeunit=:ticks)
+
+
+
 
 #println("CUDA")
 #display(@benchmark(CUDA.@sync(mapreduce(x->x, +, a, dims=(3,4)))))
 
-println("=================================================== \n")
-println("KernelAbstractions To 1\n")
-println("=================================================== \n")
-
-# display( CUDA.@sync(mapreducedim(x->x, +, b,a; init=UInt32(0))))
-# display( CUDA.@sync(GPUArrays.mapreducedim!(x->x, +,b, a; init=UInt32(0))))
-
-
-println("=================================================== \n")
-println("CUDA To 1\n")
-println("=================================================== \n")
-
-
-#display(@benchmark(CUDA.@sync(mapreducedim(x->x, +, b,a; init=Float32(0.0)))))
-
 #display(c)
+#c = CUDA.@sync(mapreduce(x->x, +, a))
 #display(c)
-#display(d)
 
 
-a = CUDA.rand(Int32, (1024,32))
-b = CUDA.rand(Int32, (1,32))
+# a1 = CUDA.rand(Float32,100,100)
+# a = CUDA.ceil.(Int32, a1 * 5)
+# b = CUDA.zeros(Int32,1,1)
 
-# println("=================================================== \n")
-# println("KernelAbstractions To N\n")
-# println("=================================================== \n")
-#Profile.init(0x0000000000989680, 0.0001)
+# println("CUDA")
+# #display(@benchmark(CUDA.@sync(mapreduce(x->x, +, a, dims=(3,4)))))
 
-x = @btime CUDA.@sync(mapreduce(x->x, +, a,dims=(1); init=Int32(0)))
-y = @btime CUDA.@sync(mapreducedim(x->x, +,b, a; init=Int32(0)))
+# CUDA.@sync(mapreducedim(x->x, +, b,a; init=Int32(0)))
+# x = CUDA.@profile CUDA.@sync(mapreducedim(x->x, +, b,a; init=Int32(0)))
+# y = CUDA.@profile CUDA.@sync(mapreducedim(x->x, +, b,a; init=Int32(0)))
 
-display(x)
-display(y)
+# display(x)
+# display(y)
 
 
-a = CUDA.rand(Int32, (1024,100))
-b = CUDA.rand(Int32, (1, 100))
-
-# println("=================================================== \n")
-# println("KernelAbstractions To N\n")
-# println("=================================================== \n")
-#Profile.init(0x0000000000989680, 0.0001)
-
-# x = @btime CUDA.@sync(mapreducedim(x->x, +,b, a; init=Int32(0)))
-# y = @btime CUDA.@sync(mapreduce(x->x, +, a,dims=(1); init=Int32(0)))
-
-#display(x)
-#display(y)
-
-#@profilehtml CUDA.@sync(mapreducedim(x->x, +,b, a; init=Int32(0)))
-#
 
 # display(c)
-# display(d)
+# c = CUDA.@sync(mapreduce(x->x, +, a))
+# display(c)
+
+
+
+# println("=================================================== \n")
+# println("KernelAbstractions To 1\n")
+# println("=================================================== \n")
+
+# #c = CUDA.@sync(mapreduce(x->x*2, +, a))
+
+# #display(@benchmark(CUDA.@sync(mapreducedim(x->x, +, b,a; init=Float32(0.0)))))
+# #c = @benchmark CUDA.@sync(mapreducedim(x->x*2, +, b,a; init=Int64(0)))
+
+# #display(c)
+# #display(c)
+# #display(b)
+
+# a1 = CUDA.rand(Float32,1024, 100)
+# a = CUDA.ceil.(Int32, a1 * 5)
+# b = CUDA.zeros(Int32,1,100)
+
+# c = CUDA.@sync(mapreducedim(x->x, +, b,a; init=Int32(0.0)))
+# display(c)
+# c = CUDA.@sync(mapreduce(x->x, +, a, dims=(1)))
+# display(c)
+
+# println("=================================================== \n")
+# println("KernelAbstractions To N\n")
+# println("=================================================== \n")
+
+# #d = @benchmark CUDA.@sync(mapreducedim(x->x*2, +, b,a; init=Int64(0)))
+
+
+
+
+# display(c)
+#display(d)
 #display(b)
 
 #abs.(c - d)
-#prof()
 
 
-
-# indice = CartesianIndices((Base.OneTo(5), Base.OneTo(5)))
-# a = rand(5, 5)
-
-# function fooA(indice, A)
-#     return A[indice[1]]
-# end
-
-# function fooB(indice, A...)
-#   return _map_getindex(A,indice[1])
-# end
-
-# @benchmark fooA($indice, $a)
-
-# @benchmark fooB($indice, $a)
+  
