@@ -1,5 +1,5 @@
 # launch configuration
-NVTX.@annotate function launch_config(kernelObj, args...; workgroupsize, ndrange)
+NVTX.@annotate function launch_config(kernelObj::KernelAbstractions.Kernel{CUDABackend,K,L,M}, args...; workgroupsize, ndrange) where {K,L,M}
   dev = device()
   backend = KernelAbstractions.backend(kernelObj)
   ndrange, workgroupsize, iterspace, dynamic = KernelAbstractions.launch_config(kernelObj, ndrange ,workgroupsize)

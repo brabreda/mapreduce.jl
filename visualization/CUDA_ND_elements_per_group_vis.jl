@@ -5,7 +5,7 @@ using StatsPlots
 
 path = dirname(@__FILE__)
 const CUDA_file = path*"/../benchmarks/CUDA/CUDA_ND_elements_per_group.csv"
-const KA_V2_file = path*"/../benchmarks/CUDA/KA_ND_elements_per_group_v2.csv"
+const KA_V2_file = path*"/../benchmarks/CUDA/KA_ND_elements_per_group_v3.csv"
 
 CUDA_scalar = DataFrame(CSV.File(CUDA_file))
 KA_V2_scalar = DataFrame(CSV.File(KA_V2_file))
