@@ -157,18 +157,16 @@ function mapreducedim(f::F, op::OP, R,
 
 
     if groups == 1
-      NVTX.@range "KA kernellaunch" begin
       nd_mapreduce_grid(KABackend)(f, op, init, localReduceIndices,sliceIndices, R′, A, ndrange=(prod(ndrange)), workgroupsize=(prod(groupsize)))
-      end
     else
       partial = similar(R, (size(R)..., groups))
       if init === nothing
           # without an explicit initializer we need to copy from the output container
           partial .= R
       end
-      NVTX.@range "KA kernellaunch" begin
+
       nd_mapreduce_grid(KABackend)(f, op, init, localReduceIndices, sliceIndices, partial, A, ndrange=(prod(ndrange)), workgroupsize=(prod(groupsize)))
-      end
+
       mapreducedim(identity, op, R′, partial; init=init)
     end
   end
