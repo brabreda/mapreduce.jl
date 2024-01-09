@@ -1,6 +1,5 @@
 # module mapreduce
 using KernelAbstractions
-using NVTX
 
 Base.@propagate_inbounds _map_getindex(args::Tuple, I) = ((args[1][I]), _map_getindex(Base.tail(args), I)...)
 Base.@propagate_inbounds _map_getindex(args::Tuple{Any}, I) = ((args[1][I]),)
