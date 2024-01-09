@@ -1,7 +1,5 @@
 # launch configuration
-function launch_config(kernelObj, args...; workgroupsize, ndrange)
-  dev = device()
-  backend = KernelAbstractions.backend(kernelObj)
+function launch_config(kernelObj::KernelAbstractions.Kernel{MetalBackend,K,L,M}, args...; workgroupsize, ndrange)
   ndrange, workgroupsize, iterspace, dynamic = KernelAbstractions.launch_config(kernelObj, ndrange ,workgroupsize)
   ctx = KernelAbstractions.mkcontext(kernelObj, ndrange, iterspace)
 
