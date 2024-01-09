@@ -1,5 +1,5 @@
 # launch configuration
-function launch_config(kernelObj::KernelAbstractions.Kernel{MetalBackend,K,L,M}, args...; workgroupsize, ndrange)
+function launch_config(kernelObj::KernelAbstractions.Kernel{MetalBackend,K,L,M}, args...; workgroupsize, ndrange) where {K,L,M}
   ndrange, workgroupsize, iterspace, dynamic = KernelAbstractions.launch_config(kernelObj, ndrange ,workgroupsize)
   ctx = KernelAbstractions.mkcontext(kernelObj, ndrange, iterspace)
 
