@@ -1,15 +1,13 @@
 # launch configuration
-NVTX.@annotate function launch_config(kernelObj::KernelAbstractions.Kernel{CUDABackend,K,L,M}, args...; workgroupsize, ndrange) where {K,L,M}
+function launch_config(kernelObj::KernelAbstractions.Kernel{CUDABackend,K,L,M}, args...; workgroupsize, ndrange) where {K,L,M}
   dev = device()
   backend = KernelAbstractions.backend(kernelObj)
   ndrange, workgroupsize, iterspace, dynamic = KernelAbstractions.launch_config(kernelObj, ndrange ,workgroupsize)
   ctx = KernelAbstractions.mkcontext(kernelObj, ndrange, iterspace)
 
-  NVTX.@range "@cuda launch=false" begin
   kernel = CUDA.@cuda launch=false always_inline=backend.always_inline kernelObj.f(ctx, args...)
-  end
 
-  maxblocks, maxthreads = CUDA.launch_configuration(kernel.fun)
+  maxblocks, maxthreads = CUDA.launch_configuration(kernel.fun;)
 
   groupsize = if prod(workgroupsize) <= maxthreads
     maxthreads
