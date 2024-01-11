@@ -101,7 +101,7 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
     # this does not affect the actual location in memory of the final values,
     # but allows us to write a generalized kernel supporting partial reductions.
     ndrange = length(A)
-    groupsize = # we use one so we are sure to not use to much local memory
+    groupsize = 1 # we use one so we are sure to not use to much local memory
 
     args = (f, op, init, Val(groupsize), R′, A)
     kernelObj = scalar_mapreduce_grid(KABackend)
