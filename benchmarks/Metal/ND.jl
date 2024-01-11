@@ -31,7 +31,7 @@ FLOAT32 = false
 KA = true
 
 for  ARG in ARGS
-  if ARG == "KA" || ARG == "CUDA"
+  if ARG == "KA" || ARG == "METAL"
     global KA = ARG == "KA"
   elseif ARG == "SUM"
     global SUM = true
