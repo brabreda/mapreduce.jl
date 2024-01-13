@@ -92,7 +92,7 @@ end
 path = dirname(@__FILE__)
 
 const file = joinpath(path, joinpath("/Metal_scalar.csv"))
-const KAfile = joinpath(path, joinpath("/KA_scalar_v3.csv"))
+const KAfile = joinpath(path, joinpath("/KA_scalar_v1.csv"))
 
 function benchmark_Metal_scalar(inputType, op, init; write_header=false, warmup=false)
 

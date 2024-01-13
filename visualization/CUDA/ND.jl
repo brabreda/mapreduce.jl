@@ -7,7 +7,6 @@ using Plots.PlotMeasures
 path = dirname(@__FILE__)
 const CUDA_file = joinpath(path, joinpath("../../benchmarks/CUDA/CUDA_ND_elements_per_group.csv"))
 const KA_V1_file = joinpath(path, joinpath("../../benchmarks/CUDA/KA_ND_elements_per_group_v1.csv"))
-const KA_V3_file = joinpath(path, joinpath("../../benchmarks/CUDA/KA_ND_elements_per_group_v3.csv"))
 
 min_times_CUDA = DataFrame()
 if isfile(CUDA_file)
@@ -34,17 +33,6 @@ else
 end
 
 min_times_KA_V3 = DataFrame()
-if isfile(KA_V3_file)
-    KA_V3_scalar = DataFrame(CSV.File(KA_V3_file))
-    if !isempty(KA_V3_scalar)
-      min_times_KA_V3 = combine(groupby(KA_V3_scalar, [:N, :type, :op]), "times" => minimum => :min_time)
-      min_times_KA_V3[!, :name] .= "Vendor neutral 2 "
-      min_times_KA_V3[!, :impl] .= "Vendor neutral 2"
-    end
-else
-    @warn "KA_ND_elements_per_group_v3.csv not found"
-end
-
 
 merged_df = vcat(min_times_CUDA, min_times_KA_V3)
 merged_df = vcat(merged_df, min_times_KA_V1)

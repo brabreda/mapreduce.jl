@@ -7,7 +7,6 @@ using Plots.PlotMeasures
 path = dirname(@__FILE__)
 const Metal_file = joinpath(path, joinpath("../../benchmarks/Metal/Metal_ND_elements_per_group.csv"))
 const KA_V1_file = joinpath(path, joinpath("../../benchmarks/Metal/KA_ND_elements_per_group_v1.csv"))
-const KA_V3_file = joinpath(path, joinpath("../../benchmarks/Metal/KA_ND_elements_per_group_v3.csv"))
 
 min_times_Metal = DataFrame()
 if isfile(Metal_file)

@@ -8,7 +8,6 @@ path = dirname(@__FILE__)
 
 const CUDA_file =   joinpath(path, joinpath("../../benchmarks/CUDA/CUDA_scalar.csv"))
 const KA_V1_file =  joinpath(path, joinpath("../../benchmarks/CUDA/KA_scalar_v1.csv"))
-const KA_V3_file =  joinpath(path, joinpath("../../benchmarks/CUDA/KA_scalar_v3.csv"))
 const CUB_file =    joinpath(path, joinpath("../../benchmarks/CUDA/CUB.csv"))
 
 # get path reletave the current file
@@ -37,16 +36,7 @@ else
 end
 
 min_times_KA_V3 = DataFrame()
-if isfile(KA_V3_file) 
-  KA_V3_scalar = DataFrame(CSV.File(KA_V3_file))
-  if !isempty(KA_V3_scalar)
-    min_times_KA_V3 = combine(groupby(KA_V3_scalar, [:N, :type, :op]), "times" => minimum => :min_time)
-    min_times_KA_V3[!, :name] .= "Vendor neutral 3 "
-    min_times_KA_V3[!, :impl] .= "Vendor neutral 3"
-  end
-else
-  @warn "KA_scalar_v3.csv not found"
-end
+
 
 min_times_CUB = DataFrame()
 if isfile(CUB_file) 
@@ -84,7 +74,9 @@ end
 
 
 
-merged_df = vcat(min_times_CUDA, min_times_KA_V3)
+merged_df = vcat(min_times_CUDA, min_times_KA_V1)
+merged_df = vcat(merged_df, min_times_KA_V3)
+
 if !isempty(merged_df)
   merged_df[!, :min_time] = merged_df[!, :min_time] ./ 1000
 end

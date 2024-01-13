@@ -6,84 +6,45 @@ Base.@propagate_inbounds _map_getindex(args::Tuple, I) = ((args[1][I]), _map_get
 Base.@propagate_inbounds _map_getindex(args::Tuple{Any}, I) = ((args[1][I]),)
 Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
 
-# Reduce an array across the grid. All elements to be processed can be addressed by the
-# product of the two iterators `Rreduce` and `Rother`, where the latter iterator will have
-# singleton entries for the dimensions that should be reduced (and vice versa).
-@kernel function nd_mapreduce_grid(f, op, neutral, groupsize, Rreduce, Rother, R, As...)
-  threadIdx_reduce = @index(Local, Linear)
-  blockDim_reduce = prod(@groupsize())
-  blockIdx_reduce, blockIdx_other = fldmod1(@index(Group,Linear), length(Rother))
-  gridDim_reduce = prod(@ndrange) ÷ length(Rother)
+Base.@propagate_inbounds _map_getindex(args::Tuple, I) = ((args[1][I]), _map_getindex(Base.tail(args), I)...)
+Base.@propagate_inbounds _map_getindex(args::Tuple{Any}, I) = ((args[1][I]),)
+Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
 
-  # block-based indexing into the values outside of the reduction dimension
-  # (that means we can safely synchronize threads within this block)
-  iother = blockIdx_other
-  @inbounds if iother <= length(Rother)
-      Iother = Rother[iother]
 
-      # load the neutral value
-      Iout = CartesianIndex(Tuple(Iother)..., blockIdx_reduce)
-      neutral = if neutral === nothing
-          R[Iout]
-      else
-          neutral
-      end
+@kernel function partial_mapreduce_grid(f, op, neutral, strideSize, groupsize, localReduceIndices, R, As...)
+  global_Idx = @index(Local, Linear) + (@index(Group, Linear) - 1) * prod(@groupsize)
+  Iout = @index(Group, Cartesian)
+  Iother = CartesianIndex(Tuple(Iout)[1:(length(Iout)-1)]..., 1)
 
-      val = op(neutral, neutral)
-
-      # reduce serially across chunks of input vector that don't fit in a block
-      ireduce = threadIdx_reduce + (blockIdx_reduce - 1) * blockDim_reduce
-      while ireduce <= length(Rreduce)
-          Ireduce = Rreduce[ireduce]
-          J = max(Iother, Ireduce)
-          val = op(val, f(_map_getindex(As, J)...))
-          ireduce += blockDim_reduce * gridDim_reduce
-      end
-
-      val =  @groupreduce(op, val, neutral, groupsize)
-
-      # write back to memory
-      if threadIdx_reduce == 1
-          R[Iout] = val
-      end
-  end
-end
-
-@kernel function scalar_mapreduce_grid(f, op, neutral, groupsize, R, A)
-  threadIdx_local = @index(Local)
-  threadIdx_global = @index(Global)
-  groupIdx = @index(Group)
-  gridsize = prod(@ndrange())
-
-  # load neutral value
-  neutral = if neutral === nothing
-      R[1]
+  # load the neutral value
+  @inbounds neutral = if neutral === nothing
+      R[Iout]
   else
       neutral
   end
-  
+
   val = op(neutral, neutral)
 
-      # every thread reduces a few values parrallel
-  index = threadIdx_global 
-  while index <= length(A)
-      val = op(val,f(A[index]))
-      index += gridsize
+  # reduce serially across chunks of input vector that don't fit in a block
+  ireduce = mod1( global_Idx, strideSize)
+  @inbounds while ireduce <= length(localReduceIndices)
+      Ireduce = localReduceIndices[ireduce]
+      J = max(Iother, Ireduce)
+      val = op(val, f(_map_getindex(As,J)...))
+      ireduce += strideSize
   end
 
-      # reduce every block to a single value
   val = @groupreduce(op, val, neutral, groupsize)
 
-      # use helper function to deal with atomic/non atomic reductions
-  if threadIdx_local == 1
-    @inbounds R[groupIdx] = val
-  end
+  # write back to memory
+  if @index(Local, Linear) == 1
+    R[Iout] = val
+  end 
 end
-
 
 function mapreducedim(f::F, op::OP, R::AnyGPUArray,
                                A::Union{AbstractArray,Broadcast.Broadcasted};
-  init=nothing) where {F, OP}  
+                               init=nothing) where {F, OP}
   Base.check_reducedims(R, A)
   length(A) == 0 && return R # isempty(::Broadcasted) iterates
   KABackend = get_backend(A) 
@@ -94,77 +55,55 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
       R = reshape(R, dims)
   end
 
-  R′ = reshape(R, (size(R)..., 1))
+  # Interation domain, the indices of the iteration space are split into two parts. localReduceIndices
+  # covers the part of the indices that is identical for every group, the other part deduced form KA.
+  # @index(Group, Cartesian) covers the part of the indices that is different for every group.
+  localReduceIndices = CartesianIndices((ifelse.(axes(A) .== axes(R), Ref(Base.OneTo(1)), axes(A))..., Base.OneTo(1), Base.OneTo(1)))
 
-  if length(R) == 1
-    # allocate an additional, empty dimension to write the reduced value to.
-    # this does not affect the actual location in memory of the final values,
-    # but allows us to write a generalized kernel supporting partial reductions.
-    ndrange = length(A)
-    groupsize = 1 # we use one so we are sure to not use to much local memory
+  ndrange = (ifelse.(axes(A) .== axes(R), size(A), 1)..., length(localReduceIndices), 1)
+  groupsize = (ones(Int, ndims(A))..., length(localReduceIndices), 1)
 
-    args = (f, op, init, Val(groupsize), R′, A)
-    kernelObj = scalar_mapreduce_grid(KABackend)
-    max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
+  # allocate an additional, empty dimension to write the reduced value to.
+  # this does not affect the actual location in memory of the final values,
+  # but allows us to write a generalized kernel supporting partial reductions.
+  R′ = reshape(R, (size(R)..., 1, 1))
 
-    ndrange = min(length(A), max_ndrange)
-    groupsize = max_groupsize
+  # we use val() to make the groupsize a compile-time constant.
+  args = (f, op, init, 1, Val(prod(1)), localReduceIndices, R′, A)
+  kernelObj = partial_mapreduce_grid(KABackend)
+  max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
+  max_groupsize = min(max_groupsize, length(localReduceIndices))
 
-    if length(A) <= max_groupsize
-      scalar_mapreduce_grid(KABackend)( f, op, init, Val(groupsize), R′, A, ndrange=groupsize, workgroupsize=groupsize)
-    else
-      partial = similar(R, (size(R)..., cld(ndrange, groupsize)))
-      if init === nothing
-          # without an explicit initializer we need to copy from the output container
-          partial .= R
-      end
-      
-      scalar_mapreduce_grid(KABackend)( f, op, init, Val(groupsize), partial, A, ndrange=ndrange, workgroupsize=groupsize)
-  
-      mapreducedim(identity, op, R', partial; init=init)
-    end
+  ndrange = (ifelse.(axes(A) .== axes(R), size(A), 1)..., max_groupsize, 1)
+  groupsize = (ones(Int, ndims(A))...,max_groupsize, 1)
+
+  groups = if prod(ndrange) <=  max_ndrange 
+    min(fld((max_ndrange ÷ max_groupsize), prod(ndrange) ÷ prod(groupsize)),  # are there groups left?
+        cld(length(localReduceIndices), max_groupsize))                  # how many groups do we want?
   else 
-    # Interation domain, the indices of the iteration space are split into two parts. localReduceIndices
-    # covers the part of the indices that is identical for every group, the other part deduced form KA.
-    # @index(Group, Cartesian) covers the part of the indices that is different for every group.
-    localReduceIndices = CartesianIndices(ifelse.(axes(A) .== axes(R), Ref(Base.OneTo(1)), axes(A)))
-    sliceIndices = CartesianIndices(axes(R))
+    1
+  end
 
-    ndrange = length(localReduceIndices) * length(sliceIndices)
-    groupsize = 1 # we use one so we are sure to not use to much local memory
+  ndrange = (ifelse.(axes(A) .== axes(R), size(A), 1)..., max_groupsize, groups)
+  stridesize = max_groupsize * groups
 
-    args = (f, op, init, Val(groupsize), localReduceIndices, sliceIndices, R′, A)
-    kernelObj = nd_mapreduce_grid(KABackend)
-    max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
-
-    # Instead of using KA's indices, we use extern CartesianIndices. This allows use more indices per 
-    # group than allowed by hardware + we can add the dimensions of the group to the end and use Linear
-    # indexing
-    groupsize = min(length(localReduceIndices), max_groupsize)
-    ndrange = groupsize * length(sliceIndices)
-
-    groups = if ndrange <= max_ndrange 
-      min(fld((max_ndrange ÷ groupsize), (ndrange ÷ groupsize)),  # are there groups left?
-          cld(length(localReduceIndices), groupsize))                  # how many groups do we want?
-    else 
-      1
-    end
-
-    ndrange = ndrange * groups
-    
-    if groups == 1
-      nd_mapreduce_grid(KABackend)(f, op, init, Val(groupsize), localReduceIndices,sliceIndices, R′, A, ndrange=ndrange, workgroupsize=groupsize)
-    else
-      partial = similar(R, (size(R)..., groups))
+  # If we have only one group per slice, every slice can be reduced in one go, no second kernel is needed.
+  if groups == 1
+    partial_mapreduce_grid(KABackend)( f, op, init, stridesize, Val(prod(groupsize)), localReduceIndices, R′, A, workgroupsize=groupsize, ndrange=ndrange)
+  else
+      # we need temporary storage to hold partial reductions for every slice the endresult can be calcultated
+      # by reducing the temporary storage in the direction of the every slice.
+      partial = similar(R, (size(R)..., 1, groups))
       if init === nothing
           # without an explicit initializer we need to copy from the output container
           partial .= R
       end
-
-      nd_mapreduce_grid(KABackend)(f, op, init, Val(groupsize), localReduceIndices, sliceIndices, partial, A, ndrange=ndrange, workgroupsize=groupsize)
-
+  
+      # NOTE: we can't use the previously-compiled kernel, since the type of `partial`
+      #       might not match the original output container (e.g. if that was a view).
+      partial_mapreduce_grid(KABackend)(f, op, init, stridesize, Val(prod(groupsize)), localReduceIndices, partial, A, workgroupsize=groupsize, ndrange=ndrange)
       mapreducedim(identity, op, R′, partial; init=init)
-    end
   end
+
   return R
 end

@@ -93,7 +93,7 @@ end
 path = dirname(@__FILE__)
 
 const file   = joinpath(path, joinpath("CUDA_ND_elements_per_group.csv"))
-const KAfile = joinpath(path, joinpath("KA_ND_elements_per_group_v3.csv"))
+const KAfile = joinpath(path, joinpath("KA_ND_elements_per_group_v1.csv"))
 
 function benchmark_CUDA_ND_elements_per_group(inputType, op, init; write_header=false)
   n =128
