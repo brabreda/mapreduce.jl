@@ -83,7 +83,7 @@ end
 
 function mapreducedim(f::F, op::OP, R::AnyGPUArray,
                                A::Union{AbstractArray,Broadcast.Broadcasted};
-                               init=nothing) where {F, OP}  
+  init=nothing) where {F, OP}  
   Base.check_reducedims(R, A)
   length(A) == 0 && return R # isempty(::Broadcasted) iterates
   KABackend = get_backend(A) 
@@ -139,14 +139,13 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
 
     # Instead of using KA's indices, we use extern CartesianIndices. This allows use more indices per 
     # group than allowed by hardware + we can add the dimensions of the group to the end and use Linear
-    # indexing.
-
-    ndrange = max_groupsize * length(sliceIndices)
-    groupsize = max_groupsize
+    # indexing
+    groupsize = min(length(localReduceIndices), max_groupsize)
+    ndrange = groupsize * length(sliceIndices)
 
     groups = if ndrange <= max_ndrange 
-      min(fld((max_ndrange ÷ max_groupsize), (ndrange ÷ max_groupsize)),  # are there groups left?
-          cld(length(localReduceIndices), max_groupsize))                  # how many groups do we want?
+      min(fld((max_ndrange ÷ groupsize), (ndrange ÷ groupsize)),  # are there groups left?
+          cld(length(localReduceIndices), groupsize))                  # how many groups do we want?
     else 
       1
     end
