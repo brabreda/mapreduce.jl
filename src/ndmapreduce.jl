@@ -6,23 +6,16 @@ Base.@propagate_inbounds _map_getindex(args::Tuple, I) = ((args[1][I]), _map_get
 Base.@propagate_inbounds _map_getindex(args::Tuple{Any}, I) = ((args[1][I]),)
 Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
 
-# Reduce an array across the grid. All elements to be processed can be addressed by the
-# product of the two iterators `Rreduce` and `Rother`, where the latter iterator will have
-# singleton entries for the dimensions that should be reduced (and vice versa).
-@kernel function nd_mapreduce_grid(f, op, neutral, groupsize, Rreduce, Rother, R, As...)
-  threadIdx_reduce = @index(Local, Linear)
-  blockDim_reduce = prod(@groupsize())
-  blockIdx_reduce, blockIdx_other = fldmod1(@index(Group,Linear), length(Rother))
-  gridDim_reduce = prod(@ndrange) ÷ length(Rother)
+@kernel function nd_mapreduce_grid(f, op, neutral, groupsize::Val{GROUPSIZE}, localReduceIndices, sliceIndices, R, As...) where {GROUPSIZE}
+  threadIdx_local = @index(Local, Linear)
+  sliceIdx, Idx_in_slice = fldmod1(@index(Group,Linear), length(sliceIndices))
+  elements_per_group = prod(@ndrange) ÷ length(sliceIndices)
 
-  # block-based indexing into the values outside of the reduction dimension
-  # (that means we can safely synchronize threads within this block)
-  iother = blockIdx_other
-  @inbounds if iother <= length(Rother)
-      Iother = Rother[iother]
+  iother = Idx_in_slice
+  @inbounds if iother <= length(sliceIndices)
+      Iother = sliceIndices[iother]
 
-      # load the neutral value
-      Iout = CartesianIndex(Tuple(Iother)..., blockIdx_reduce)
+      Iout = CartesianIndex(Tuple(Iother)..., sliceIdx)
       neutral = if neutral === nothing
           R[Iout]
       else
@@ -32,18 +25,18 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
       val = op(neutral, neutral)
 
       # reduce serially across chunks of input vector that don't fit in a block
-      ireduce = threadIdx_reduce + (blockIdx_reduce - 1) * blockDim_reduce
-      while ireduce <= length(Rreduce)
-          Ireduce = Rreduce[ireduce]
+      ireduce = threadIdx_local + (sliceIdx - 1) * GROUPSIZE
+      while ireduce <= length(localReduceIndices)
+          Ireduce = localReduceIndices[ireduce]
           J = max(Iother, Ireduce)
           val = op(val, f(_map_getindex(As, J)...))
-          ireduce += blockDim_reduce * gridDim_reduce
+          ireduce += elements_per_group * GROUPSIZE
       end
 
       val =  @groupreduce(op, val, neutral, groupsize)
 
       # write back to memory
-      if threadIdx_reduce == 1
+      if threadIdx_local == 1
           R[Iout] = val
       end
   end
@@ -64,17 +57,16 @@ end
   
   val = op(neutral, neutral)
 
-      # every thread reduces a few values parrallel
+  # every thread sequentially reduces a chunk if possible
   index = threadIdx_global 
   while index <= length(A)
       val = op(val,f(A[index]))
       index += gridsize
   end
 
-      # reduce every block to a single value
+  # reduce the values of the group to a single value
   val = @groupreduce(op, val, neutral, groupsize)
 
-      # use helper function to deal with atomic/non atomic reductions
   if threadIdx_local == 1
     @inbounds R[groupIdx] = val
   end
@@ -131,9 +123,9 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
     sliceIndices = CartesianIndices(axes(R))
 
     ndrange = length(localReduceIndices) * length(sliceIndices)
-    groupsize = 1 # we use one so we are sure to not use to much local memory
+    groupsize = length(localReduceIndices)
 
-    args = (f, op, init, Val(groupsize), localReduceIndices, sliceIndices, R′, A)
+    args = (f, op, init, Val(1), localReduceIndices, sliceIndices, R′, A)
     kernelObj = nd_mapreduce_grid(KABackend)
     max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 

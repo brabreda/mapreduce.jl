@@ -39,7 +39,7 @@ class CUB_ReductionBenchmark
             //exit(EXIT_FAILURE);
         }
 
-        for(int i = 0; i < 10000; i++)
+        for(int i = 0; i < 50; i++)
         {       
           auto s = create_sample(n);
             outputFile << s << std::endl;
