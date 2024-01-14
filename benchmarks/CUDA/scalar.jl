@@ -97,7 +97,7 @@ const KAfile = joinpath(path, joinpath("KA_scalar_v1.csv"))
 
 function benchmark_CUDA_scalar(inputType, op, init; write_header=false, warmup=false)
   n =128
-  while n < 8000000
+  while n < 2^28
       results = []
       N = []
       types = []

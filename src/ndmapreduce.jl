@@ -6,10 +6,6 @@ Base.@propagate_inbounds _map_getindex(args::Tuple, I) = ((args[1][I]), _map_get
 Base.@propagate_inbounds _map_getindex(args::Tuple{Any}, I) = ((args[1][I]),)
 Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
 
-Base.@propagate_inbounds _map_getindex(args::Tuple, I) = ((args[1][I]), _map_getindex(Base.tail(args), I)...)
-Base.@propagate_inbounds _map_getindex(args::Tuple{Any}, I) = ((args[1][I]),)
-Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
-
 
 @kernel function partial_mapreduce_grid(f, op, neutral, strideSize, groupsize, localReduceIndices, R, As...)
   global_Idx = @index(Local, Linear) + (@index(Group, Linear) - 1) * prod(@groupsize)
@@ -69,7 +65,7 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
   R′ = reshape(R, (size(R)..., 1, 1))
 
   # we use val() to make the groupsize a compile-time constant.
-  args = (f, op, init, 1, Val(prod(1)), localReduceIndices, R′, A)
+  args = (f, op, init, 1, Val(1), localReduceIndices, R′, A)
   kernelObj = partial_mapreduce_grid(KABackend)
   max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
   max_groupsize = min(max_groupsize, length(localReduceIndices))
