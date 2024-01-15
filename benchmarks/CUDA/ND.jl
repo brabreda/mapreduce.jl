@@ -97,7 +97,7 @@ const KAfile = joinpath(path, joinpath("KA_ND_elements_per_group_v3.csv"))
 
 function benchmark_CUDA_ND_elements_per_group(inputType, op, init; write_header=false)
   n =128
-  while n < 66000
+  while n < 2^23
       results = []
       types = []
       operators = []

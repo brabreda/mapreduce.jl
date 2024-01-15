@@ -131,7 +131,7 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
     max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
     groupsize = max_groupsize
-    ndrange = groupsize * length(sliceIndices)
+    ndrange = min(ndrange, groupsize * length(sliceIndices))
 
     groups = if ndrange <= max_ndrange 
       min(fld((max_ndrange ÷ groupsize), (ndrange ÷ groupsize)),  # are there groups left?

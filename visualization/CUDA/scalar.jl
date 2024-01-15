@@ -110,7 +110,7 @@ if !isempty(merged_df)
   #get unique operations
   ops = unique(merged_df[!, :op])
 
-  merged_df = filter(row -> row[:N] < 2^23, merged_df)
+  merged_df = filter(row -> row[:N] > 2^22, merged_df)
 
   #iteratore over each combination of type and operation
   for type in types
