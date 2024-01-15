@@ -13,3 +13,8 @@ function launch_config(kernelObj::KernelAbstractions.Kernel{MetalBackend,K,L,M},
 
   return maxthreads, ndrangesize
 end
+
+function max_workgroupsize(::MetalBackend)
+  dev = current_device()
+  return Int(dev.maxThreadsPerThreadgroup.width)
+end

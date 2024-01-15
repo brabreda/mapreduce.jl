@@ -41,8 +41,8 @@ if isfile(KA_V3_file)
   KA_V3_scalar = DataFrame(CSV.File(KA_V3_file))
   if !isempty(KA_V3_scalar)
     min_times_KA_V3 = combine(groupby(KA_V3_scalar, [:N, :type, :op]), "times" => minimum => :min_time)
-    min_times_KA_V3[!, :name] .= "Vendor neutral 3 "
-    min_times_KA_V3[!, :impl] .= "Vendor neutral 3"
+    min_times_KA_V3[!, :name] .= "Vendor neutral 2 "
+    min_times_KA_V3[!, :impl] .= "Vendor neutral 2"
   end
 else
   @warn "KA_scalar_v3.csv not found"
@@ -85,6 +85,8 @@ end
 
 
 merged_df = vcat(min_times_CUDA, min_times_KA_V3)
+merged_df = vcat(merged_df, min_times_KA_V1)
+
 if !isempty(merged_df)
   merged_df[!, :min_time] = merged_df[!, :min_time] ./ 1000
 end
@@ -108,7 +110,7 @@ if !isempty(merged_df)
   #get unique operations
   ops = unique(merged_df[!, :op])
 
-  #merged_df = filter(row -> row[:N] > 2^20, merged_df)
+  merged_df = filter(row -> row[:N] < 2^23, merged_df)
 
   #iteratore over each combination of type and operation
   for type in types
@@ -122,7 +124,7 @@ if !isempty(merged_df)
           for group in grouped_df
 
           name, impl = group[1, :name], group[1, :impl]
-          plot!(group.N, group.min_time, label="$name", marker=:circle, color= (impl == "CUDA.jl" ? :red : impl == "CUB" ? :blue : :green))
+          plot!(group.N, group.min_time, label="$name", marker=:circle, color= (impl == "CUDA.jl" ? :red : impl == "CUB" ? :blue : impl == "Vendor neutral 2" ? :green : :orange))
           end
 
           png(joinpath(path, joinpath("scalar/"*type*"_"*op*".png")))

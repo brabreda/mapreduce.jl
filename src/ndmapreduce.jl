@@ -9,7 +9,7 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
 @kernel function nd_mapreduce_grid(f, op, neutral, groupsize::Val{GROUPSIZE}, localReduceIndices, sliceIndices, R, As...) where {GROUPSIZE}
   threadIdx_local = @index(Local, Linear)
   sliceIdx, Idx_in_slice = fldmod1(@index(Group,Linear), length(sliceIndices))
-  elements_per_group = prod(@ndrange) ÷ length(sliceIndices)
+  groups_per_slice = cld(length(localReduceIndices), GROUPSIZE)
 
   iother = Idx_in_slice
   @inbounds if iother <= length(sliceIndices)
@@ -30,7 +30,7 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
           Ireduce = localReduceIndices[ireduce]
           J = max(Iother, Ireduce)
           val = op(val, f(_map_getindex(As, J)...))
-          ireduce += elements_per_group * GROUPSIZE
+          ireduce += groups_per_slice * GROUPSIZE
       end
 
       val =  @groupreduce(op, val, neutral, groupsize)
@@ -89,13 +89,13 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
   R′ = reshape(R, (size(R)..., 1))
 
   if length(R) == 1
-    # allocate an additional, empty dimension to write the reduced value to.
-    # this does not affect the actual location in memory of the final values,
-    # but allows us to write a generalized kernel supporting partial reductions.
+    # we use Linear indexing for the scalar case, because it does not matter which elemets are correspond to a group
     ndrange = length(A)
-    groupsize = 1 # we use one so we are sure to not use to much local memory
+    groupsize = length(A)
 
-    args = (f, op, init, Val(groupsize), R′, A)
+    # The max workgroupsize is used to determine the amount of localmemory needed. It also allows for a better estimation of
+    # the maximum workgroupsize that can be used.
+    args = (f, op, init, Val(max_workgroupsize(KABackend)), R′, A)
     kernelObj = scalar_mapreduce_grid(KABackend)
     max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
@@ -116,28 +116,26 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
       mapreducedim(identity, op, R', partial; init=init)
     end
   else 
-    # Interation domain, the indices of the iteration space are split into two parts. localReduceIndices
-    # covers the part of the indices that is identical for every group, the other part deduced form KA.
-    # @index(Group, Cartesian) covers the part of the indices that is different for every group.
+    # localReduceIndices covers the part of the index thats within a slice. SliceIndices is used
+    # for the index of a slice combining them results in an index within the input array.
     localReduceIndices = CartesianIndices(ifelse.(axes(A) .== axes(R), Ref(Base.OneTo(1)), axes(A)))
     sliceIndices = CartesianIndices(axes(R))
 
     ndrange = length(localReduceIndices) * length(sliceIndices)
     groupsize = length(localReduceIndices)
 
-    args = (f, op, init, Val(1), localReduceIndices, sliceIndices, R′, A)
+    # The max workgroupsize is used to determine the amount of localmemory needed. It also allows for a better estimation of
+    # the maximum workgroupsize that can be used.
+    args = (f, op, init, Val(max_workgroupsize(KABackend)), localReduceIndices, sliceIndices, R′, A)
     kernelObj = nd_mapreduce_grid(KABackend)
     max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
-    # Instead of using KA's indices, we use extern CartesianIndices. This allows use more indices per 
-    # group than allowed by hardware + we can add the dimensions of the group to the end and use Linear
-    # indexing
-    groupsize = min(length(localReduceIndices), max_groupsize)
+    groupsize = max_groupsize
     ndrange = groupsize * length(sliceIndices)
 
     groups = if ndrange <= max_ndrange 
       min(fld((max_ndrange ÷ groupsize), (ndrange ÷ groupsize)),  # are there groups left?
-          cld(length(localReduceIndices), groupsize))                  # how many groups do we want?
+          cld(length(localReduceIndices), groupsize))             # how many groups do we want?
     else 
       1
     end
