@@ -51,17 +51,11 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
       R = reshape(R, dims)
   end
 
-  # Interation domain, the indices of the iteration space are split into two parts. localReduceIndices
-  # covers the part of the indices that is identical for every group, the other part deduced form KA.
-  # @index(Group, Cartesian) covers the part of the indices that is different for every group.
   localReduceIndices = CartesianIndices((ifelse.(axes(A) .== axes(R), Ref(Base.OneTo(1)), axes(A))..., Base.OneTo(1), Base.OneTo(1)))
 
   ndrange = (ifelse.(axes(A) .== axes(R), size(A), 1)..., length(localReduceIndices), 1)
   groupsize = (ones(Int, ndims(A))..., length(localReduceIndices), 1)
-
-  # allocate an additional, empty dimension to write the reduced value to.
-  # this does not affect the actual location in memory of the final values,
-  # but allows us to write a generalized kernel supporting partial reductions.
+  
   R′ = reshape(R, (size(R)..., 1, 1))
 
   # we use val() to make the groupsize a compile-time constant.
