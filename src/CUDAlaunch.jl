@@ -1,5 +1,5 @@
 # launch configuration
-function launch_config(kernelObj::KernelAbstractions.Kernel{CUDABackend,K,L,M}, args...; workgroupsize, ndrange) where {K,L,M}
+function launch_config(kernelObj::KernelAbstractions.Kernel{CUDABackend,K,L,M}, args...; workgroupsize=256, ndrange) where {K,L,M}
   dev = device()
   backend = KernelAbstractions.backend(kernelObj)
   ndrange, workgroupsize, iterspace, dynamic = KernelAbstractions.launch_config(kernelObj, ndrange ,workgroupsize)
@@ -23,4 +23,9 @@ end
 function max_workgroupsize(::CUDABackend)
   dev = CUDA.device()
   return attribute(dev, CUDA.DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK)
+end
+
+function max_localmemory(::CUDABackend)
+  dev = CUDA.device()
+  return attribute(dev, CUDA.CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK)
 end

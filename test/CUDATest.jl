@@ -10,4 +10,6 @@ include("base.jl")
              ComplexF16, ComplexF32, ComplexF64,
              Complex{Int16}, Complex{Int32}, Complex{Int64},)
 
+
 reductionTest(CuArray, eltypes)
+bigReductionTest(CuArray, eltypes)

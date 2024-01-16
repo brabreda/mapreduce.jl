@@ -18,3 +18,8 @@ function max_workgroupsize(::MetalBackend)
   dev = current_device()
   return Int(dev.maxThreadsPerThreadgroup.width)
 end
+
+function max_localmemory(::MetalBackend)
+  dev = current_device()
+  return Int(dev.maxThreadgroupMemoryLength)
+end

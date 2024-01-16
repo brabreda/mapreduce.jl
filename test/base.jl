@@ -32,7 +32,6 @@ function compare(f, AT::Type{<:AbstractGPUArray}, xs...; kwargs...)
   cpu_in = map(x -> isa(x, Base.RefValue) ? x[] : deepcopy(x), xs)
   gpu_in = map(x -> isa(x, Base.RefValue) ? x[] : adapt(ArrayAdaptor{AT}(), x), xs)
 
-
   cpu_out = f(cpu_in...)
   gpu_out = f(gpu_in...)
 
@@ -54,6 +53,20 @@ function reductionTest(AT, eltypes)
         @test compare((A,R)->mapreducedim(identity, +, R, A), AT, rand(range, (2,2)), zeros(ET, (2,)))
         @test compare((A,R)->mapreducedim(identity, +, R, A), AT, rand(range, (2,3)), zeros(ET, (2,)))
     end
+end
+
+function bigReductionTest(AT, eltypes)
+  @testset "big $ET" for ET in eltypes
+    if ET <: Integer && sizeof(ET) >= 4
+
+      range = (ET(1):ET(10)) 
+      for (sz,red) in [(2^23,32)=>(1,32), (2^20,128)=>(1,128)]
+          @test compare((A,R)->mapreducedim(identity, +, R, A), AT, rand(range, sz), zeros(ET, red))
+          @test compare((A,R)->mapreducedim(identity, *, R, A), AT, rand(range, sz), ones(ET, red))
+          @test compare((A,R)->mapreducedim(x->x+x, +, R, A), AT, rand(range, sz), zeros(ET, red))
+      end
+    end
+  end
 end
 
 

@@ -9,7 +9,7 @@ Base.@propagate_inbounds _map_getindex(args::Tuple{}, I) = ()
 @kernel function nd_mapreduce_grid(f, op, neutral, groupsize::Val{GROUPSIZE}, localReduceIndices, sliceIndices, R, As...) where {GROUPSIZE}
   threadIdx_local = @index(Local, Linear)
   sliceIdx, Idx_in_slice = fldmod1(@index(Group,Linear), length(sliceIndices))
-  groups_per_slice = cld(length(localReduceIndices), GROUPSIZE)
+  groups_per_slice = prod(@ndrange()) ÷ (length(sliceIndices) * GROUPSIZE)
 
   iother = Idx_in_slice
   @inbounds if iother <= length(sliceIndices)
@@ -131,7 +131,7 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
     max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
     groupsize = max_groupsize
-    ndrange = min(ndrange, groupsize * length(sliceIndices))
+    ndrange =  groupsize * length(sliceIndices)
 
     groups = if ndrange <= max_ndrange 
       min(fld((max_ndrange ÷ groupsize), (ndrange ÷ groupsize)),  # are there groups left?
