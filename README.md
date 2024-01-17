@@ -2,6 +2,7 @@
 
 ## setup
 ```julia
+add Random DataFrames Tables Statistics CSV BenchmarkTools GPUArrays StatsPlots Plots
 using Pkg
 Pkg.add(url="https://github.com/brabreda/KernelAbstractions.jl.git")
 ```

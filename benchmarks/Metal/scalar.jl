@@ -97,7 +97,7 @@ const KAfile = joinpath(path, joinpath("KA_scalar_v3.csv"))
 function benchmark_Metal_scalar(inputType, op, init; write_header=false, warmup=false)
 
   n =128
-  while n < 8000000
+  while n < 2^28
       results = []
       N = []
       types = []
@@ -156,81 +156,86 @@ end
 function benchmark_Metal_scalar()
 
   write(KA ? KAfile : file, "times,gctimes,memory,allocs,N,type,op\n");
-  for idk in 1:7
+  for idk in 1:2
   # ########################################
-  # Sum
-  # ########################################
-  benchmark_Metal_scalar(UInt8, +, UInt8(0))
-  benchmark_Metal_scalar(UInt16, +, UInt16(0))
-  benchmark_Metal_scalar(UInt32, +, UInt32(0))
-  benchmark_Metal_scalar(UInt64, +, UInt64(0))
-  benchmark_Metal_scalar(UInt128, +, UInt128(0))
+    # Sum
+    # ########################################
+    if SUM
+      if UINT8 benchmark_Metal_scalar(UInt8, +, UInt8(0)) end
+      if UINT16 benchmark_Metal_scalar(UInt16, +, UInt16(0)) end
+      if UINT32 benchmark_Metal_scalar(UInt32, +, UInt32(0)) end
+      if UINT64 benchmark_Metal_scalar(UInt64, +, UInt64(0)) end
+      if UINT128 benchmark_Metal_scalar(UInt128, +, UInt128(0)) end
 
-  benchmark_Metal_scalar(Int8, +, Int8(0))
-  benchmark_Metal_scalar(Int16, +, Int16(0))
-  benchmark_Metal_scalar(Int32, +, Int32(0))
-  benchmark_Metal_scalar(Int64, +, Int64(0))
-  benchmark_Metal_scalar(Int128, +, Int128(0))
+      if INT8 benchmark_Metal_scalar(Int8, +, Int8(0)) end
+      if INT16 benchmark_Metal_scalar(Int16, +, Int16(0)) end
+      if INT32 benchmark_Metal_scalar(Int32, +, Int32(0)) end
+      if INT64 benchmark_Metal_scalar(Int64, +, Int64(0)) end
+      if INT128 benchmark_Metal_scalar(Int128, +, Int128(0)) end
 
-  benchmark_Metal_scalar(Float16, +, Float16(0))
-  benchmark_Metal_scalar(Float32, +, Float32(0))
+      if FLOAT16 benchmark_Metal_scalar(Float16, +, Float16(0)) end
+      if FLOAT32 benchmark_Metal_scalar(Float32, +, Float32(0)) end
+    end
 
+    # ########################################
+    # Min
+    # ########################################  
+    if MIN
+      if UINT8 benchmark_Metal_scalar(UInt8, min, typemax(UInt8)) end
+      if UINT16 benchmark_Metal_scalar(UInt16, min, typemax(UInt16)) end
+      if UINT32 benchmark_Metal_scalar(UInt32, min, typemax(UInt32)) end
+      if UINT64 benchmark_Metal_scalar(UInt64, min, typemax(UInt64)) end
+      if UINT128 benchmark_Metal_scalar(UInt128, min, typemax(UInt128)) end
 
-  # ########################################
-  # Min
-  # ########################################  
-  benchmark_Metal_scalar(UInt8, min, typemax(UInt8))
-  benchmark_Metal_scalar(UInt16, min, typemax(UInt16))
-  benchmark_Metal_scalar(UInt32, min, typemax(UInt32))
-  benchmark_Metal_scalar(UInt64, min, typemax(UInt64))
-  benchmark_Metal_scalar(UInt128, min, typemax(UInt128))
+      if INT8 benchmark_Metal_scalar(Int8, min, typemax(Int8)) end
+      if INT16 benchmark_Metal_scalar(Int16, min, typemax(Int16)) end
+      if INT32 benchmark_Metal_scalar(Int32, min, typemax(Int32)) end
+      if INT64 benchmark_Metal_scalar(Int64, min, typemax(Int64)) end
+      if INT128 benchmark_Metal_scalar(Int128, min, typemax(Int128)) end
 
-  benchmark_Metal_scalar(Int8, min, typemax(Int8))
-  benchmark_Metal_scalar(Int16, min, typemax(Int16))
-  benchmark_Metal_scalar(Int32, min, typemax(Int32))
-  benchmark_Metal_scalar(Int64, min, typemax(Int64))
-  benchmark_Metal_scalar(Int128, min, typemax(Int128))
+      if FLOAT16 benchmark_Metal_scalar(Float16, min, typemax(Float16)) end
+      if FLOAT32 benchmark_Metal_scalar(Float32, min, typemax(Float32)) end
+    end
 
-  benchmark_Metal_scalar(Float16, min, typemax(Float16))
-  benchmark_Metal_scalar(Float32, min, typemax(Float32))
+    # ########################################
+    # Max
+    # ######################################## 
+    if MAX
+      if UINT8 benchmark_Metal_scalar(UInt8, max, typemin(UInt8)) end
+      if UINT16 benchmark_Metal_scalar(UInt16, max, typemin(UInt16)) end
+      if UINT32 benchmark_Metal_scalar(UInt32, max, typemin(UInt32)) end
+      if UINT64 benchmark_Metal_scalar(UInt64, max, typemin(UInt64)) end
+      if UINT128 benchmark_Metal_scalar(UInt128, max, typemin(UInt128)) end
 
+      if INT8 benchmark_Metal_scalar(Int8, max, typemin(Int8)) end
+      if INT16 benchmark_Metal_scalar(Int16, max, typemin(Int16)) end
+      if INT32 benchmark_Metal_scalar(Int32, max, typemin(Int32)) end
+      if INT64 benchmark_Metal_scalar(Int64, max, typemin(Int64)) end
+      if INT128 benchmark_Metal_scalar(Int128, max, typemin(Int128)) end
 
-  # ########################################
-  # Min
-  # ######################################## 
-  benchmark_Metal_scalar(UInt8, max, typemin(UInt8))
-  benchmark_Metal_scalar(UInt16, max, typemin(UInt16))
-  benchmark_Metal_scalar(UInt32, max, typemin(UInt32))
-  benchmark_Metal_scalar(UInt64, max, typemin(UInt64))
-  benchmark_Metal_scalar(UInt128, max, typemin(UInt128))
+      if FLOAT16 benchmark_Metal_scalar(Float16, max, typemin(Float16)) end
+      if FLOAT32 benchmark_Metal_scalar(Float32, max, typemin(Float32)) end
+    end
 
-  benchmark_Metal_scalar(Int8, max, typemin(Int8))
-  benchmark_Metal_scalar(Int16, max, typemin(Int16))
-  benchmark_Metal_scalar(Int32, max, typemin(Int32))
-  benchmark_Metal_scalar(Int64, max, typemin(Int64))
-  benchmark_Metal_scalar(Int128, max, typemin(Int128))
+    # ########################################
+    # Product
+    # ######################################## 
+    if PROD
+      if UINT8 benchmark_Metal_scalar(UInt8, *, UInt8(1)) end
+      if UINT16 benchmark_Metal_scalar(UInt16, *, UInt16(1)) end
+      if UINT32 benchmark_Metal_scalar(UInt32, *, UInt32(1)) end
+      if UINT64 benchmark_Metal_scalar(UInt64, *, UInt64(1)) end
+      if UINT128 benchmark_Metal_scalar(UInt128, *, UInt128(1)) end
 
-  benchmark_Metal_scalar(Float16, max, typemin(Float16))
-  benchmark_Metal_scalar(Float32, max, typemin(Float32))
+      if INT8 benchmark_Metal_scalar(Int8, *, Int8(1)) end
+      if INT16 benchmark_Metal_scalar(Int16, *, Int16(1)) end
+      if INT32 benchmark_Metal_scalar(Int32, *, Int32(1)) end
+      if INT64 benchmark_Metal_scalar(Int64, *, Int64(1)) end
+      if INT128 benchmark_Metal_scalar(Int128, *, Int128(1)) end
 
-
-  # ########################################
-  # Product
-  # ######################################## 
-  benchmark_Metal_scalar(UInt8, *, UInt8(1))
-  benchmark_Metal_scalar(UInt16, *, UInt16(1))
-  benchmark_Metal_scalar(UInt32, *, UInt32(1))
-  benchmark_Metal_scalar(UInt64, *, UInt64(1))
-  benchmark_Metal_scalar(UInt128, *, UInt128(1))
-
-  benchmark_Metal_scalar(Int8, *, Int8(1))
-  benchmark_Metal_scalar(Int16, *, Int16(1))
-  benchmark_Metal_scalar(Int32, *, Int32(1))
-  benchmark_Metal_scalar(Int64, *, Int64(1))
-  benchmark_Metal_scalar(Int128, *, Int128(1))
-
-  benchmark_Metal_scalar(Float16, *, Float16(1))
-  benchmark_Metal_scalar(Float32, *, Float32(1))
+      if FLOAT16 benchmark_Metal_scalar(Float16, *, Float16(1)) end
+      if FLOAT32 benchmark_Metal_scalar(Float32, *, Float32(1)) end
+    end
 
   end
 end
