@@ -15,7 +15,7 @@ function launch_config(kernelObj, args...; workgroupsize, ndrange) end
 max_workgroupsize(backend)
 
 Return the maximum amount of threads per group
-- `kernel`: A KernelAbstractions backend 
+- `backend`: A KernelAbstractions backend 
 """
 function max_workgroupsize(backend) end
 
@@ -23,7 +23,7 @@ function max_workgroupsize(backend) end
   max_localmemory(backend)
 
 Return the maximum amount of local memory available per group
-- `kernel`: A KernelAbstractions backend 
+- `backend`: A KernelAbstractions backend 
 """
 function max_localmemory(backend) end
 

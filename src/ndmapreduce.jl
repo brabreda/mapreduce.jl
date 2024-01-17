@@ -73,9 +73,9 @@ end
 end
 
 
-function mapreducedim(f::F, op::OP, R::AnyGPUArray,
+function mapreducedim(f::F, op::OP, R::AnyGPUArray{T},
                                A::Union{AbstractArray,Broadcast.Broadcasted};
-  init=nothing) where {F, OP}  
+  init=nothing) where {F, OP, T}  
   Base.check_reducedims(R, A)
   length(A) == 0 && return R # isempty(::Broadcasted) iterates
   KABackend = get_backend(A) 
@@ -95,7 +95,8 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
 
     # The max workgroupsize is used to determine the amount of localmemory needed. It also allows for a better estimation of
     # the maximum workgroupsize that can be used.
-    args = (f, op, init, Val(max_workgroupsize(KABackend)), R′, A)
+    max_groupsize = min(max_workgroupsize(KABackend), max_localmemory(KABackend) ÷ sizeof(T))
+    args = (f, op, init, Val(max_groupsize), R′, A)
     kernelObj = scalar_mapreduce_grid(KABackend)
     max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
@@ -110,7 +111,7 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
           # without an explicit initializer we need to copy from the output container
           partial .= R
       end
-      
+
       scalar_mapreduce_grid(KABackend)( f, op, init, Val(groupsize), partial, A, ndrange=ndrange, workgroupsize=groupsize)
   
       mapreducedim(identity, op, R', partial; init=init)
@@ -126,7 +127,8 @@ function mapreducedim(f::F, op::OP, R::AnyGPUArray,
 
     # The max workgroupsize is used to determine the amount of localmemory needed. It also allows for a better estimation of
     # the maximum workgroupsize that can be used.
-    args = (f, op, init, Val(max_workgroupsize(KABackend)), localReduceIndices, sliceIndices, R′, A)
+    max_groupsize = min(max_workgroupsize(KABackend), max_localmemory(KABackend) ÷ sizeof(T))
+    args = (f, op, init, Val(max_groupsize), localReduceIndices, sliceIndices, R′, A)
     kernelObj = nd_mapreduce_grid(KABackend)
     max_groupsize, max_ndrange = launch_config(kernelObj, args...; workgroupsize=groupsize, ndrange=ndrange)
 
