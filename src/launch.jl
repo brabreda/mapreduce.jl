@@ -1,22 +1,31 @@
 using KernelAbstractions
 
-abstract type launchConfig end
+"""
+  launch_config(kernelObj, args...; workgroupsize, ndrange)
 
-function (cfg::launchConfig)(args...) end
+Return the maximum amout of threads and blocks giving the best occupancy for a kernel
+- `kernelObj`: A KernelAbstractions kernel object 
+- `args...`: Arguments for the kernel
+- `workgroupsize`: Ideal groupsize without taking limits into account
+- `ndrange`: Ideal ndrange without taking limits into account
+"""
+function launch_config(kernelObj, args...; workgroupsize, ndrange) end
 
-function launch_config(kernelObj, args...; workgroupsize, ndrange)::launchConfig end
+"""
+max_workgroupsize(backend)
 
-##
-# Needed because of disconnection KernelAbstraction and the hardware size
-##
-function getStrideSize(::launchConfig) end
+Return the maximum amount of threads per group
+- `backend`: A KernelAbstractions backend 
+"""
+function max_workgroupsize(backend) end
 
-function getMaxGroups(::launchConfig) end
+"""
+  max_localmemory(backend)
 
-function getMaxWorkItems(::launchConfig) end
-
-function setWorkItems(::launchConfig, workitems) end
-
+Return the maximum amount of local memory available per group
+- `backend`: A KernelAbstractions backend 
+"""
+function max_localmemory(backend) end
 
 
 

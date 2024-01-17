@@ -27,7 +27,7 @@ static void writeCSVHeader(string fileName){
         std::cerr << "Failed to open the file." << std::endl;
         //exit(EXIT_FAILURE);
     }
-    outputFile << "type;operation;blockSize;gridSize;elapsedTime" << std::endl;
+    outputFile << "N;sizetype;type;elapsed;operation;result" << std::endl;
     outputFile.close();
 }
 

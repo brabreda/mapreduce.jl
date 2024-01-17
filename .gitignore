@@ -1,3 +1,17 @@
 *.csv
 **/*.csv
 **/**/*.csv
+*.png
+**/*.png
+**/**/*.png
+test.jl
+.vscode
+.vscode/**
+.vscode/**/**
+*.nsys-rep
+**/*.nsys-rep
+**/**/*.nsys-rep
+*.svg
+**/*.svg
+**/**/*.svg
+test.jl
