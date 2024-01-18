@@ -47,48 +47,10 @@ else
   @warn "KA_scalar_v3.csv not found"
 end
 
-min_times_CUB = DataFrame()
-if isfile(CUB_file) 
-  CUB = DataFrame(CSV.File(CUB_file))
-  if !isempty(CUB)
-    CUB = select(CUB, [:N,:sizetype,:type,:elapsed,:operation])
-
-    #remane operaton to op and elapsed to times
-    rename!(CUB, :operation => :op)
-    rename!(CUB, :elapsed => :times)
-
-    CUB[!, :type] = replace.(CUB[!, :type], "uint8_t" => "UInt8")
-    CUB[!, :type] = replace.(CUB[!, :type], "uint16_t" => "UInt16")
-    CUB[!, :type] = replace.(CUB[!, :type], "uint32_t" => "UInt32")
-    CUB[!, :type] = replace.(CUB[!, :type], "uint64_t" => "UInt64")
-    CUB[!, :type] = replace.(CUB[!, :type], "uint128_t" => "UInt128")
-
-    CUB[!, :type] = replace.(CUB[!, :type], "int8_t" => "Int8")
-    CUB[!, :type] = replace.(CUB[!, :type], "int16_t" => "Int16")
-    CUB[!, :type] = replace.(CUB[!, :type], "int32_t" => "Int32")
-    CUB[!, :type] = replace.(CUB[!, :type], "int64_t" => "Int64")
-    CUB[!, :type] = replace.(CUB[!, :type], "int128_t" => "Int128")
-
-    #float to float16 and double to float32
-    CUB[!, :type] = replace.(CUB[!, :type], "float" => "Float16")
-    CUB[!, :type] = replace.(CUB[!, :type], "double" => "Float32")
-
-    min_times_CUB = combine(groupby(CUB, [:N, :type, :op]), "times" => minimum => :min_time)
-    min_times_CUB[!, :name] .= "CUB "
-    min_times_CUB[!, :impl] .= "CUB"
-  end
-else
-  @warn "CUB.csv not found"
-end
-
-
-
 merged_df = vcat(min_times_Metal, min_times_KA_V3)
 if !isempty(merged_df)
   merged_df[!, :min_time] = merged_df[!, :min_time] ./ 1000
 end
-
-merged_df = vcat(merged_df, min_times_CUB)
 
 # filter N below 500000 to get figure ...
 # merged_df = filter(row -> row[:N] <= 500000, merged_df)
