@@ -149,7 +149,6 @@ function benchmark_Metal_scalar(inputType, op, init; write_header=false, warmup=
       end
   end 
 
-  Metal.memory_status() 
   #return df_benchmark
 end
 
