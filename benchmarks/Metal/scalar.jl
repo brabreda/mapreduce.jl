@@ -97,7 +97,7 @@ const KAfile = joinpath(path, joinpath("KA_scalar_v3.csv"))
 function benchmark_Metal_scalar(inputType, op, init; write_header=false, warmup=false)
 
   n =128
-  while n < 2^28
+  while n < 2^23
       results = []
       N = []
       types = []
@@ -155,7 +155,7 @@ end
 function benchmark_Metal_scalar()
 
   write(KA ? KAfile : file, "times,gctimes,memory,allocs,N,type,op\n");
-  for idk in 1:2
+  for idk in 1:5
   # ########################################
     # Sum
     # ########################################

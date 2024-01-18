@@ -7,6 +7,7 @@ using Pkg
 Pkg.add(url="https://github.com/brabreda/KernelAbstractions.jl.git")
 ```
 
+
 ## Benchmarks
 
 you can run the benchmarks scripts with the following options:
@@ -50,7 +51,23 @@ julia benchmarks/Metal/scalar.jl
 julia benchmarks/Metal/ND.jl
 ```
 
+## CUB 
+
+```
+cd benchmarks/CUB/build
+cmake ..
+./CUB_Benchmark
+```
+
 ## Visualisations
+First run all the benchmarks with the types and operators that you want. Then run the visualization script. 
+The plots can be found in 
+- /visualization/CUDA/Scalar/
+- /visualization/CUDA/ND/
+
+- /visualization/Metal/Scalar/
+- /visualization/Metal/ND/
+
 
 ### CUDA
 ```
