@@ -153,7 +153,7 @@ end
 function benchmark_CUDA_scalar()
 
   write(KA ? KAfile : file, "times,gctimes,memory,allocs,N,type,op\n");
-  for idk in 1:2
+  for idk in 1:5
 
     # ########################################
     # Sum
