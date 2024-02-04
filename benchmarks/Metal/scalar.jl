@@ -155,7 +155,7 @@ end
 function benchmark_Metal_scalar()
 
   write(KA ? KAfile : file, "times,gctimes,memory,allocs,N,type,op\n");
-  for idk in 1:5
+  for idk in 1:10
   # ########################################
     # Sum
     # ########################################

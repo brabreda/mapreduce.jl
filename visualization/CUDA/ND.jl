@@ -22,24 +22,24 @@ else
 end
 
 min_times_KA_V1 = DataFrame()
-if isfile(KA_V1_file)
-    KA_V1_scalar = DataFrame(CSV.File(KA_V1_file))
-    if !isempty(KA_V1_scalar)
-      min_times_KA_V1 = combine(groupby(KA_V1_scalar, [:N, :type,:op]), "times" => minimum => :min_time)
-      min_times_KA_V1[!, :name] .= "Vendor neutral 1 "
-      min_times_KA_V1[!, :impl] .= "Vendor neutral 1"
-    end
-else
-    @warn "KA_ND_elements_per_group_v1.csv not found"
-end
+# if isfile(KA_V1_file)
+#     KA_V1_scalar = DataFrame(CSV.File(KA_V1_file))
+#     if !isempty(KA_V1_scalar)
+#       min_times_KA_V1 = combine(groupby(KA_V1_scalar, [:N, :type,:op]), "times" => minimum => :min_time)
+#       min_times_KA_V1[!, :name] .= "Vendor neutral 1 "
+#       min_times_KA_V1[!, :impl] .= "Vendor neutral 1"
+#     end
+# else
+#     @warn "KA_ND_elements_per_group_v1.csv not found"
+# end
 
 min_times_KA_V3 = DataFrame()
 if isfile(KA_V3_file)
     KA_V3_scalar = DataFrame(CSV.File(KA_V3_file))
     if !isempty(KA_V3_scalar)
       min_times_KA_V3 = combine(groupby(KA_V3_scalar, [:N, :type, :op]), "times" => minimum => :min_time)
-      min_times_KA_V3[!, :name] .= "Vendor neutral 2 "
-      min_times_KA_V3[!, :impl] .= "Vendor neutral 2"
+      min_times_KA_V3[!, :name] .= "Vendor neutral "
+      min_times_KA_V3[!, :impl] .= "Vendor neutral"
     end
 else
     @warn "KA_ND_elements_per_group_v3.csv not found"

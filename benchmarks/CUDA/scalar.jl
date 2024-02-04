@@ -5,6 +5,7 @@ using GPUArrays
 using DataFrames
 using CSV
 using NVTX
+using LinuxPerf
 
 include("../benchmarks_to_df.jl")
 include("../../src/ndmapreduce.jl")
@@ -96,40 +97,54 @@ const file = joinpath(path, joinpath("CUDA_scalar.csv"))
 const KAfile = joinpath(path, joinpath("KA_scalar_v3.csv"))
 
 function benchmark_CUDA_scalar(inputType, op, init; write_header=false, warmup=false)
-  n =128
-  while n < 2^23
+   for n in 2 .^ vcat(collect(7:22))
       results = []
       N = []
       types = []
       operators = []
-  
+      sleep(0.5)
+
+      @show n
+
+      device_synchronize()
+      GC.gc(true)
+
+      CUDA.reclaim()
+      #CUDA.memory_status()
+
+      data = CuArray{inputType}(undef, n)
+      final = CuArray{inputType}(undef, 1)
+
       # this will take longer as every iteration the function will be parsed
       if KA
-        bench = @benchmarkable CUDA.@sync(mapreducedim(x->x, $op, final, data; init=$init)) evals=10 samples=500 seconds = 10000 setup= (begin 
-            data=CUDA.rand($inputType, $n)
-            final=CUDA.ones($inputType, 1) 
+        bench = @benchmarkable CUDA.@sync(mapreducedim(x->x, $op, $final, $data; init=$init)) evals=1 samples=1000 seconds = 10000 setup= (begin 
+            device_synchronize()
+            rand!($data)
+            rand!($final)
+            device_synchronize()
           end) teardown = (begin 
             #CUDA.unsafe_free!(data) 
             #CUDA.unsafe_free!(final) 
           end)
       else
-        bench = @benchmarkable CUDA.@sync(GPUArrays.mapreducedim!(x->x, $op, final, data; init=$init)) evals=10 samples=500 seconds = 10000 setup= (begin 
-            data=CUDA.rand($inputType, $n)
-            final=CUDA.ones($inputType, 1) 
-          end) teardown = (begin 
-            #CUDA.unsafe_free!(data) 
-            #CUDA.unsafe_free!(final) 
-          end)
+        # bench = @benchmarkable CUDA.@sync(GPUArrays.mapreducedim!(x->x, $op, final, data; init=$init)) evals=1 samples=1000 seconds = 10000 setup= (begin 
+        #     data=CUDA.rand($inputType, ($n+1))
+        #     final=CUDA.ones($inputType, 1) 
+        #   end) teardown = (begin 
+        #     #CUDA.unsafe_free!(data) 
+        #     #CUDA.unsafe_free!(final) 
+        #   end)
       end
+      result = nothing
+      display(@measure result = run(bench))
 
-      result = run(bench)
+      CUDA.unsafe_free!(data) 
+      CUDA.unsafe_free!(final)
 
       push!(results, result)
       push!(N, n)
       push!(types, inputType)
       push!(operators, op)
-
-      n = n * 2
 
       df_benchmark = mapreduce(vcat, zip(results, N, types, operators)) do (x, y, a, b)
           df = DataFrame(x)
@@ -153,8 +168,7 @@ end
 function benchmark_CUDA_scalar()
 
   write(KA ? KAfile : file, "times,gctimes,memory,allocs,N,type,op\n");
-  for idk in 1:5
-
+  for idk in 1:1
     # ########################################
     # Sum
     # ########################################
@@ -175,9 +189,12 @@ function benchmark_CUDA_scalar()
       if FLOAT32 benchmark_CUDA_scalar(Float32, +, Float32(0)) end
     end
 
+    #CUDA.memory_status()
+
     # ########################################
     # Min
-    # ########################################  
+    # ########################################
+
     if MIN
       if UINT8 benchmark_CUDA_scalar(UInt8, min, typemax(UInt8)) end
       if UINT16 benchmark_CUDA_scalar(UInt16, min, typemax(UInt16)) end
