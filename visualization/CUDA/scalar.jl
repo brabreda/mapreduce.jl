@@ -125,7 +125,7 @@ if !isempty(merged_df)
   ops = unique(merged_df[!, :op])
 
 
-  merged_df = filter(row -> row[:N] <= 2^22 && row[:N] < 2^28, merged_df)
+  merged_df = filter(row -> row[:N] <= 2^22 && row[:N] < 2^28 && row[:times] < 1000, merged_df)
   #iteratore over each combination of type and operation
   for type in types
     for op in ops
@@ -139,8 +139,8 @@ if !isempty(merged_df)
       for group in grouped_df
         average = combine(groupby(group, :N), "times" => mean => :times)
         ribbons = (combine(groupby(group, :N), "times" => std => :rib) .* 1.96) ./ sqrt.(combine(groupby(group, :N), nrow).nrow)
-        display(combine(groupby(group, :N), "times" => std => :rib))
-        display(sqrt.(combine(groupby(group, :N), nrow).nrow))
+        display(combine(groupby(group, :N), "times" => std => :std))
+        display(combine(groupby(group, :N), nrow).nrow)
         display(ribbons)
 
         name, impl = group[1, :name], group[1, :impl]

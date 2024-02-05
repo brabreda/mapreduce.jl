@@ -30,7 +30,7 @@ class CUB_ReductionBenchmark
 
   void run()
   {  
-    for(int n = 128; n < 5000000; n=n*2)
+    for(int n = 128; n <= 134217728; n=n*2)
     {
         std::ofstream outputFile{m_FileName, std::ios::app};
 
@@ -46,7 +46,7 @@ class CUB_ReductionBenchmark
         }
         outputFile.close();
     }
-    for(int n = 4194304; n >= 128; n=n/2)
+    for(int n = 134217728; n >= 128; n=n/2)
     {
         std::ofstream outputFile{m_FileName, std::ios::app};
 
