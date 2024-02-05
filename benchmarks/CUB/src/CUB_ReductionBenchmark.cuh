@@ -30,7 +30,7 @@ class CUB_ReductionBenchmark
 
   void run()
   {  
-    for (int n = 256; n < 5000000; n=n*2)
+    for(int n = 128; n < 5000000; n=n*2)
     {
         std::ofstream outputFile{m_FileName, std::ios::app};
 
@@ -39,7 +39,23 @@ class CUB_ReductionBenchmark
             //exit(EXIT_FAILURE);
         }
 
-        for(int i = 0; i < 50; i++)
+        for(int i = 0; i < 1000; i++)
+        {       
+          auto s = create_sample(n);
+            outputFile << s << std::endl;
+        }
+        outputFile.close();
+    }
+    for(int n = 4194304; n >= 128; n=n/2)
+    {
+        std::ofstream outputFile{m_FileName, std::ios::app};
+
+        if (!outputFile.is_open()) {
+            std::cerr << "Failed to open the file." << std::endl;
+            //exit(EXIT_FAILURE);
+        }
+
+        for(int i = 0; i < 1000; i++)
         {       
           auto s = create_sample(n);
             outputFile << s << std::endl;
