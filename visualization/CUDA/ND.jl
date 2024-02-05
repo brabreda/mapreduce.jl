@@ -64,7 +64,7 @@ if !isempty(merged_df)
 
   for type in types
     for op in ops
-      plot(xaxis=:log2, title="Minimum execution time ND "*op*" reduction "*type*"( N,32) to (1,32)", xlabel="N", ylabel="Time (μs)", legend=:topleft, size=(800, 600), link=:both, left_margin = [10mm 0mm], bottom_margin = [10mm 0mm], right_margin = [10mm 0mm])
+      plot(xaxis=:log2, title="Average execution time ND "*op*" reduction "*type*"( N,32) to (1,32)", xlabel="N", ylabel="Time (μs)", legend=:topleft, size=(800, 600), link=:both, left_margin = [10mm 0mm], bottom_margin = [10mm 0mm], right_margin = [10mm 0mm])
 
       filtered_df = filter(row -> row[:type] == type && row[:op] == op, merged_df)
       grouped_df = groupby(filtered_df, [:name, :impl, :type, :op])

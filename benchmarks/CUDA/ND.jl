@@ -96,8 +96,8 @@ const file   = joinpath(path, joinpath("CUDA_ND_elements_per_group.csv"))
 const KAfile = joinpath(path, joinpath("KA_ND_elements_per_group_v3.csv"))
 
 function benchmark_CUDA_ND_elements_per_group(inputType, op, init; write_header=false)
-  n =128
-  while n < 2^23
+  n = 128
+  for n in 2 .^ vcat(collect(reverse(7:22)),collect(7:22))
       results = []
       types = []
       operators = []
@@ -105,20 +105,27 @@ function benchmark_CUDA_ND_elements_per_group(inputType, op, init; write_header=
 
       inputdim = (n, 32)
       outputdim = (1, 32)
+
+      data = CuArray{inputType}(undef, inputdim)
+      final = CuArray{inputType}(undef, outputdim)
   
       # this will take longer as every iteration the function will be parsed
       if KA
-        bench = @benchmarkable CUDA.@sync(mapreducedim(x->x, $op, final, data; init=$init)) evals=10 samples=500 seconds = 10000 setup= (begin 
-          data=CUDA.rand($inputType, $inputdim)
-          final=CUDA.rand($inputType, $outputdim) 
+        bench = @benchmarkable CUDA.@sync(mapreducedim(x->x, $op, $final, $data; init=$init)) evals=1 samples=1000 seconds = 10000 setup= (begin 
+          device_synchronize()
+          rand!($data)
+          rand!($final)
+          device_synchronize()
         end) teardown = (begin 
           #CUDA.unsafe_free!(data) 
           #CUDA.unsafe_free!(final) 
         end)
       else
-        bench = @benchmarkable CUDA.@sync(GPUArrays.mapreducedim!(x->x, $op, final, data; init=$init)) evals=10 samples=500 seconds = 10000 setup= (begin 
-          data=CUDA.rand($inputType, $inputdim)
-          final=CUDA.rand($inputType, $outputdim)  
+        bench = @benchmarkable CUDA.@sync(GPUArrays.mapreducedim!(x->x, $op, $final, $data; init=$init)) evals=1 samples=1000 seconds = 10000 setup= (begin 
+          device_synchronize()
+          rand!($data)
+          rand!($final)
+          device_synchronize() 
         end) teardown = (begin 
           #CUDA.unsafe_free!(data) 
           #CUDA.unsafe_free!(final) 
@@ -126,7 +133,7 @@ function benchmark_CUDA_ND_elements_per_group(inputType, op, init; write_header=
       end
       result = run(bench)
 
-      push!(results, result)
+      push!(results, result[2:end])
       push!(types, inputType)
       push!(operators, op)
       push!(N, n)
@@ -156,7 +163,7 @@ function benchmark_CUDA_ND_elements_per_group()
   # Sum
   # ########################################
   write(KA ? KAfile : file, "times,gctimes,memory,allocs,N,type,op\n");
-  for idk in 1:5
+  for idk in 1:1
     if SUM
       if UINT8 benchmark_CUDA_ND_elements_per_group(UInt8, +, UInt8(0)) end
       if UINT16  benchmark_CUDA_ND_elements_per_group(UInt16, +, UInt16(0)) end
