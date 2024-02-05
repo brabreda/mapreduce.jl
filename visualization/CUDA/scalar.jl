@@ -122,12 +122,12 @@ if !isempty(merged_df)
   ops = unique(merged_df[!, :op])
 
 
-  merged_df = filter(row -> row[:N] <= 2^22 && row[:N] < 2^28 && row[:gctimes] == 0.0, merged_df)
+  merged_df = filter(row -> row[:N] >= 2^22 && row[:N] < 2^28 && row[:gctimes] == 0.0, merged_df)
   #iteratore over each combination of type and operation
   for type in types
     for op in ops
       #filter the dataframe for the current type and operation
-      plot(xaxis=:log2, title="Average execution time scalar " * op * " reduction " * type, xlabel="N", ylabel="Time (μs)", legend=:topleft, size=(800, 600), link=:both, left_margin=[10mm 0mm], bottom_margin=[10mm 0mm], right_margin=[10mm 0mm])
+      plot(xaxis=:log2, title="Average execution time scalar " * op * " reduction " * type, xlabel="N", ylabel="Time (μs)", legend=:topleft, size=(800, 600), link=:both, left_margin=[20mm 0mm], bottom_margin=[10mm 0mm], right_margin=[10mm 0mm])
 
       filtered_df = filter(row -> row[:type] == type && row[:op] == op, merged_df)
       grouped_df = groupby(filtered_df, [:name, :impl, :type, :op])

@@ -3,6 +3,7 @@ using DataFrames
 using Plots
 using StatsPlots
 using Plots.PlotMeasures
+using Statistics
 
 path = dirname(@__FILE__)
 const CUDA_file = joinpath(path, joinpath("../../benchmarks/CUDA/CUDA_ND_elements_per_group.csv"))
@@ -13,7 +14,7 @@ min_times_CUDA = DataFrame()
 if isfile(CUDA_file)
     CUDA_scalar = DataFrame(CSV.File(CUDA_file))
     if !isempty(CUDA_scalar)
-      min_times_CUDA = combine(groupby(CUDA_scalar, [:N, :type, :op]), "times" => minimum => :min_time)
+      min_times_CUDA = CUDA_scalar
       min_times_CUDA[!, :name] .= "CUDA.jl "
       min_times_CUDA[!, :impl] .= "CUDA.jl"
     end
@@ -37,7 +38,7 @@ min_times_KA_V3 = DataFrame()
 if isfile(KA_V3_file)
     KA_V3_scalar = DataFrame(CSV.File(KA_V3_file))
     if !isempty(KA_V3_scalar)
-      min_times_KA_V3 = combine(groupby(KA_V3_scalar, [:N, :type, :op]), "times" => minimum => :min_time)
+      min_times_KA_V3 = KA_V3_scalar
       min_times_KA_V3[!, :name] .= "Vendor neutral "
       min_times_KA_V3[!, :impl] .= "Vendor neutral"
     end
@@ -60,21 +61,31 @@ if !isempty(merged_df)
   types = unique(merged_df[!, :type])
   ops = unique(merged_df[!, :op])
 
-  merged_df[!, :min_time] = merged_df[!, :min_time] ./ 1000
+  merged_df[!, :times] = merged_df[!, :times] ./ 1000
 
+  merged_df = filter( row -> row[:N] < 2^28 && row[:gctimes] == 0.0, merged_df)
+  #iteratore over each combination of type and operation
   for type in types
     for op in ops
-      plot(xaxis=:log2, title="Average execution time ND "*op*" reduction "*type*"( N,32) to (1,32)", xlabel="N", ylabel="Time (μs)", legend=:topleft, size=(800, 600), link=:both, left_margin = [10mm 0mm], bottom_margin = [10mm 0mm], right_margin = [10mm 0mm])
+      #filter the dataframe for the current type and operation
+      plot(xaxis=:log2, title="Average execution time ND " * op * " reduction " * type* " ( N,32) to (1,32)", xlabel="N", ylabel="Time (μs)", legend=:topleft, size=(800, 600), link=:both, left_margin=[20mm 0mm], bottom_margin=[10mm 0mm], right_margin=[10mm 0mm])
 
       filtered_df = filter(row -> row[:type] == type && row[:op] == op, merged_df)
       grouped_df = groupby(filtered_df, [:name, :impl, :type, :op])
 
-      # Iterate through each group and add a line with a unique color and marker
+
       for group in grouped_df
-          name, impl = group[1, :name], group[1, :impl]
-          plot!(group.N, group.min_time, label="$name", marker=:circle, color= (impl == "CUDA.jl" ? :red : impl == "Vendor neutral 1" ? :blue : :green))
+        average = combine(groupby(group, :N), "times" => mean => :times)
+        ribbons = (combine(groupby(group, :N), "times" => std => :rib) .* 1.96) ./ sqrt.(combine(groupby(group, :N), nrow).nrow)
+        display(combine(groupby(group, :N), "times" => std => :std))
+        display(combine(groupby(group, :N), nrow).nrow)
+        display(ribbons)
+
+        name, impl = group[1, :name], group[1, :impl]
+        plot!(unique(group.N), average.times, label="$name", marker=:circle, ribbon=ribbons.rib, color=(impl == "CUDA.jl" ? :red : impl == "CUB" ? :blue : impl == "Vendor neutral 2" ? :green : :orange))
       end
-      png(joinpath(path, joinpath("ND/"*type*"_"*op*".png")))
+
+      png(joinpath(path, joinpath("ND/" * type * "_" * op * ".png")))
     end
   end
 end

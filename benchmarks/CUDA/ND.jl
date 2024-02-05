@@ -97,7 +97,7 @@ const KAfile = joinpath(path, joinpath("KA_ND_elements_per_group_v3.csv"))
 
 function benchmark_CUDA_ND_elements_per_group(inputType, op, init; write_header=false)
   n = 128
-  for n in 2 .^ vcat(collect(reverse(7:22)),collect(7:22))
+  for n in 2 .^ vcat(collect(7:22), collect(reverse(7:22)))
       results = []
       types = []
       operators = []
@@ -116,9 +116,6 @@ function benchmark_CUDA_ND_elements_per_group(inputType, op, init; write_header=
           rand!($data)
           rand!($final)
           device_synchronize()
-        end) teardown = (begin 
-          #CUDA.unsafe_free!(data) 
-          #CUDA.unsafe_free!(final) 
         end)
       else
         bench = @benchmarkable CUDA.@sync(GPUArrays.mapreducedim!(x->x, $op, $final, $data; init=$init)) evals=1 samples=1000 seconds = 10000 setup= (begin 
@@ -126,9 +123,6 @@ function benchmark_CUDA_ND_elements_per_group(inputType, op, init; write_header=
           rand!($data)
           rand!($final)
           device_synchronize() 
-        end) teardown = (begin 
-          #CUDA.unsafe_free!(data) 
-          #CUDA.unsafe_free!(final) 
         end)
       end
       result = run(bench)
