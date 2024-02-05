@@ -96,12 +96,11 @@ const file = joinpath(path, joinpath("CUDA_scalar.csv"))
 const KAfile = joinpath(path, joinpath("KA_scalar_v3.csv"))
 
 function benchmark_CUDA_scalar(inputType, op, init; write_header=false, warmup=false)
-   for n in 2 .^ vcat(collect(reverse(22:28)),collect(22:28))
+   for n in 2 .^ vcat(collect(reverse(7:27)),collect(7:27))
       results = []
       N = []
       types = []
       operators = []
-      sleep(0.5)
 
       @show n
 

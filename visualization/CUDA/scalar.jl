@@ -32,9 +32,6 @@ if isfile(KA_V1_file)
     min_times_KA_V1 = KA_V1_scalar
     min_times_KA_V1[!, :name] .= "Vendor neutral 1 "
     min_times_KA_V1[!, :impl] .= "Vendor neutral 1"
-    min_times_KA_V1.times[min_times_KA_V1.N .== 2^15] .= 140000
-    min_times_KA_V1.times[min_times_KA_V1.N .== 2^16] .= 140000
-    min_times_KA_V1.times[min_times_KA_V1.N .== 2^17] .= 140000
   end
 else
   @warn "KA_scalar_v1.csv not found"
@@ -125,7 +122,7 @@ if !isempty(merged_df)
   ops = unique(merged_df[!, :op])
 
 
-  merged_df = filter(row -> row[:N] <= 2^22 && row[:N] < 2^28 && row[:times] < 1000, merged_df)
+  merged_df = filter(row -> row[:N] <= 2^22 && row[:N] < 2^28, merged_df)
   #iteratore over each combination of type and operation
   for type in types
     for op in ops
