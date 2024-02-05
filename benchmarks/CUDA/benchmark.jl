@@ -17,7 +17,7 @@ const KAfile = "KA_scalar_v1.csv"
 const KA = true
 
 function benchmark_CUDA_scalar(inputType, op, init; write_header=false, warmup=false)
-  for n in 2 .^ vcat(collect(reverse(22:28)),collect(22:28))
+  for n in 2 .^ vcat(collect(22:27), collect(reverse(22:27)))
      results = []
      N = []
      types = []
