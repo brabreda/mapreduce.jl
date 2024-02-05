@@ -122,7 +122,7 @@ if !isempty(merged_df)
   ops = unique(merged_df[!, :op])
 
 
-  merged_df = filter(row -> row[:N] <= 2^22 && row[:N] < 2^28, merged_df)
+  merged_df = filter(row -> row[:N] <= 2^22 && row[:N] < 2^28 && row[:gctimes] == 0.0, merged_df)
   #iteratore over each combination of type and operation
   for type in types
     for op in ops
